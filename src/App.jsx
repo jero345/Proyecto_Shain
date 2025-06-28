@@ -2,7 +2,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Login } from '@views/Login';
 import { Signup } from '@views/Signup';
 import { Home } from '@views/Home';
-import { Finance } from '@views/Finance'; // 👈 Asegúrate de tener este archivo
+import { Finance } from '@views/Finance';
+import { History } from '@views/History';
+import { Notifications } from '@views/Notifications';
+import { AddMovement } from '@views/AddMovement'; // 👈 Importación nueva
 
 import { Navigation } from '@components/Navigation';
 import { Navbar } from '@components/Navbar';
@@ -31,22 +34,11 @@ function App() {
         <Route path="/signup" element={<Signup />} />
 
         {/* Rutas protegidas */}
-        <Route
-          path="/dashboard/home"
-          element={
-            <ProtectedLayout>
-              <Home />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/finanzas"
-          element={
-            <ProtectedLayout>
-              <Finance />
-            </ProtectedLayout>
-          }
-        />
+        <Route path="/dashboard/home" element={<ProtectedLayout><Home /></ProtectedLayout>} />
+        <Route path="/dashboard/finanzas" element={<ProtectedLayout><Finance /></ProtectedLayout>} />
+        <Route path="/dashboard/historial" element={<ProtectedLayout><History /></ProtectedLayout>} />
+        <Route path="/dashboard/notificaciones" element={<ProtectedLayout><Notifications /></ProtectedLayout>} />
+        <Route path="/dashboard/agregar-movimiento" element={<ProtectedLayout><AddMovement /></ProtectedLayout>} />
       </Routes>
     </BrowserRouter>
   );
