@@ -5,7 +5,8 @@ import { Home } from '@views/Home';
 import { Finance } from '@views/Finance';
 import { History } from '@views/History';
 import { Notifications } from '@views/Notifications';
-import { AddMovement } from '@views/AddMovement'; // 👈 Importación nueva
+import { AddMovement } from '@views/AddMovement';
+import { ChatBot } from '@views/ChatBot'; // 👈 Importación nueva
 
 import { Navigation } from '@components/Navigation';
 import { Navbar } from '@components/Navbar';
@@ -39,6 +40,7 @@ function App() {
         <Route path="/dashboard/historial" element={<ProtectedLayout><History /></ProtectedLayout>} />
         <Route path="/dashboard/notificaciones" element={<ProtectedLayout><Notifications /></ProtectedLayout>} />
         <Route path="/dashboard/agregar-movimiento" element={<ProtectedLayout><AddMovement /></ProtectedLayout>} />
+        <Route path="/dashboard/chatbot" element={<ProtectedLayout><ChatBot /></ProtectedLayout>} />
       </Routes>
     </BrowserRouter>
   );
