@@ -18,7 +18,7 @@ const navItems = [
   { icon: <MessageCircle size={20} />, label: 'ChatBot', to: '/dashboard/chatbot' },
   { icon: <FileText size={20} />, label: 'Historial', to: '/dashboard/historial' },
   { icon: <Bell size={20} />, label: 'Notificaciones', to: '/dashboard/notificaciones' },
-  { icon: <Settings size={20} />, label: 'Configuraciones', to: '#' },
+  { icon: <Settings size={20} />, label: 'Configuraciones', to: '/dashboard/configuraciones' },
 ];
 
 export const Navigation = () => {

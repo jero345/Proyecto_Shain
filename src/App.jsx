@@ -7,9 +7,11 @@ import { History } from '@views/History';
 import { Notifications } from '@views/Notifications';
 import { AddMovement } from '@views/AddMovement';
 import { ChatBot } from '@views/ChatBot'; // 👈 Importación nueva
+import { Settings } from '@views/Settings'; // 👈 Importación nueva
 
 import { Navigation } from '@components/Navigation';
 import { Navbar } from '@components/Navbar';
+
 
 // Layout protegido con navegación y barra superior
 function ProtectedLayout({ children }) {
@@ -41,6 +43,7 @@ function App() {
         <Route path="/dashboard/notificaciones" element={<ProtectedLayout><Notifications /></ProtectedLayout>} />
         <Route path="/dashboard/agregar-movimiento" element={<ProtectedLayout><AddMovement /></ProtectedLayout>} />
         <Route path="/dashboard/chatbot" element={<ProtectedLayout><ChatBot /></ProtectedLayout>} />
+         <Route path="/dashboard/configuraciones" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
       </Routes>
     </BrowserRouter>
   );
