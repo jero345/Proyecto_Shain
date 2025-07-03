@@ -6,23 +6,22 @@ import { Finance } from '@views/Finance';
 import { History } from '@views/History';
 import { Notifications } from '@views/Notifications';
 import { AddMovement } from '@views/AddMovement';
-import { ChatBot } from '@views/ChatBot'; // 👈 Importación nueva
-import { Settings } from '@views/Settings'; // 👈 Importación nueva
+import { ChatBot } from '@views/ChatBot';
+import { Settings } from '@views/Settings';
 
 import { Navigation } from '@components/Navigation';
 import { Navbar } from '@components/Navbar';
-
 
 // Layout protegido con navegación y barra superior
 function ProtectedLayout({ children }) {
   return (
     <>
       <Navbar />
-      <div className="flex">
+      <div className="relative flex">
         <Navigation />
-        <main className="ml-60 min-h-screen w-full bg-gray-50 dark:bg-gray-900 p-4 pt-16 overflow-x-hidden">
-          {children}
-        </main>
+        <div className="w-full min-h-screen bg-gray-50 dark:bg-gray-900 pt-16 md:ml-72 overflow-x-hidden">
+          <main className="w-full h-full">{children}</main>
+        </div>
       </div>
     </>
   );
@@ -43,7 +42,7 @@ function App() {
         <Route path="/dashboard/notificaciones" element={<ProtectedLayout><Notifications /></ProtectedLayout>} />
         <Route path="/dashboard/agregar-movimiento" element={<ProtectedLayout><AddMovement /></ProtectedLayout>} />
         <Route path="/dashboard/chatbot" element={<ProtectedLayout><ChatBot /></ProtectedLayout>} />
-         <Route path="/dashboard/configuraciones" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+        <Route path="/dashboard/configuraciones" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
       </Routes>
     </BrowserRouter>
   );
