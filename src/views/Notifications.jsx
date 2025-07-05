@@ -1,5 +1,6 @@
 import { AlertTriangle, Bot, BellRing, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PageContainer } from '@components/PageContainer';
 
 export const Notifications = () => {
   const notifications = [
@@ -62,7 +63,7 @@ export const Notifications = () => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 bg-cover p-6 text-white overflow-x-hidden">
+    <PageContainer>
       <h1 className="text-2xl font-bold mb-6">Historial de notificaciones</h1>
 
       <div className="space-y-4">
@@ -89,6 +90,6 @@ export const Notifications = () => {
           <ArrowLeft size={16} /> Volver al resumen diario
         </Link>
       </div>
-    </div>
+    </PageContainer>
   );
 };

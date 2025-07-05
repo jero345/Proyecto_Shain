@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PageContainer } from '@components/PageContainer';
 
 export const ChatBot = () => {
   const [messages, setMessages] = useState([
@@ -76,46 +77,48 @@ export const ChatBot = () => {
   }, {});
 
   return (
-    <div className="w-full min-h-screen bg-custom-gradient bg-cover p-6 text-white flex flex-col">
-      <h1 className="text-2xl font-bold mb-4">ShainBot</h1>
+    <PageContainer>
+      <div className="flex flex-col h-full">
+        <h1 className="text-2xl font-bold mb-4">ShainBot</h1>
 
-      <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-        {Object.entries(groupedByDate).map(([date, msgs]) => (
-          <div key={date}>
-            <p className="text-xs text-white/60 mb-2">{date}</p>
-            <div className="space-y-2">
-              {msgs.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`max-w-[80%] px-4 py-2 rounded-lg text-sm ${
-                    msg.sender === 'user'
-                      ? 'bg-gradientMid1 self-end ml-auto'
-                      : 'bg-white/10 text-white/90'
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              ))}
+        <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+          {Object.entries(groupedByDate).map(([date, msgs]) => (
+            <div key={date}>
+              <p className="text-xs text-white/60 mb-2">{date}</p>
+              <div className="space-y-2">
+                {msgs.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`max-w-[80%] px-4 py-2 rounded-lg text-sm ${
+                      msg.sender === 'user'
+                        ? 'bg-gradientMid1 self-end ml-auto'
+                        : 'bg-white/10 text-white/90'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <form onSubmit={handleSend} className="mt-6 flex gap-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe un mensaje..."
-          className="flex-1 px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
-        />
-        <button
-          type="submit"
-          className="bg-gradientStart hover:bg-gradientMid1 px-4 py-2 rounded-md font-semibold transition"
-        >
-          Enviar
-        </button>
-      </form>
-    </div>
+        <form onSubmit={handleSend} className="mt-6 flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Escribe un mensaje..."
+            className="flex-1 px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
+          />
+          <button
+            type="submit"
+            className="bg-gradientStart hover:bg-gradientMid1 px-4 py-2 rounded-md font-semibold transition"
+          >
+            Enviar
+          </button>
+        </form>
+      </div>
+    </PageContainer>
   );
 };

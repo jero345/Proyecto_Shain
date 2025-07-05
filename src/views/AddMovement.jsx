@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PageContainer } from '@components/PageContainer';
 
 export const AddMovement = () => {
   const [form, setForm] = useState({
@@ -30,145 +31,151 @@ export const AddMovement = () => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-white overflow-x-hidden py-6">
-      <div className="w-full">
-        <h1 className="text-2xl font-bold mb-6 px-4">Agregar Movimiento</h1>
+    <PageContainer>
+      <h1 className="text-2xl font-bold mb-6">Agregar Movimiento</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full px-4">
-          {/* Formulario */}
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white/5 p-6 rounded-xl space-y-5 w-full"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Formulario */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white/5 p-6 rounded-xl space-y-5 w-full"
+        >
+          <div>
+            <label className="block text-sm font-semibold mb-1">¿Qué tipo de movimiento fue?</label>
+            <div className="flex gap-6 mt-1">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="type"
+                  value="ingreso"
+                  checked={form.type === 'ingreso'}
+                  onChange={handleChange}
+                />
+                Ingreso
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="type"
+                  value="egreso"
+                  checked={form.type === 'egreso'}
+                  onChange={handleChange}
+                />
+                Egreso
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">Fecha*</label>
+            <input
+              type="date"
+              name="date"
+              value={form.date}
+              onChange={handleChange}
+              className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">Valor del movimiento*</label>
+            <input
+              type="number"
+              name="amount"
+              value={form.amount}
+              onChange={handleChange}
+              placeholder="$ 000.000,00"
+              className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">¿Qué tipo es?*</label>
+            <div className="flex gap-6 mt-1">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="frequency"
+                  value="nuevo"
+                  checked={form.frequency === 'nuevo'}
+                  onChange={handleChange}
+                />
+                Nuevo
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="frequency"
+                  value="recurrente"
+                  checked={form.frequency === 'recurrente'}
+                  onChange={handleChange}
+                />
+                Recurrente
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">Descripción</label>
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              placeholder="Ej: Venta de producto, pago de factura..."
+              className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-gradientStart hover:bg-gradientMid1 text-white py-2 rounded-md font-semibold transition"
           >
-            <div>
-              <label className="block text-sm font-semibold mb-1">¿Qué tipo de movimiento fue?</label>
-              <div className="flex gap-6 mt-1">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="ingreso"
-                    checked={form.type === 'ingreso'}
-                    onChange={handleChange}
-                  />
-                  Ingreso
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="type"
-                    value="egreso"
-                    checked={form.type === 'egreso'}
-                    onChange={handleChange}
-                  />
-                  Egreso
-                </label>
-              </div>
-            </div>
+            Agregar {form.type === 'ingreso' ? 'Ingreso' : 'Egreso'}
+          </button>
 
-            <div>
-              <label className="block text-sm font-semibold mb-1">Fecha*</label>
-              <input
-                type="date"
-                name="date"
-                value={form.date}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
-              />
-            </div>
+          <p className="text-xs text-white/60 mt-2">
+            Recuerda revisar bien la información antes de guardar el movimiento.
+          </p>
+        </form>
 
-            <div>
-              <label className="block text-sm font-semibold mb-1">Valor del movimiento*</label>
-              <input
-                type="number"
-                name="amount"
-                value={form.amount}
-                onChange={handleChange}
-                placeholder="$ 000.000,00"
-                className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1">¿Qué tipo es?*</label>
-              <div className="flex gap-6 mt-1">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="frequency"
-                    value="nuevo"
-                    checked={form.frequency === 'nuevo'}
-                    onChange={handleChange}
-                  />
-                  Nuevo
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="frequency"
-                    value="recurrente"
-                    checked={form.frequency === 'recurrente'}
-                    onChange={handleChange}
-                  />
-                  Recurrente
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1">Descripción</label>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Ej: Venta de producto, pago de factura..."
-                className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-gradientStart hover:bg-gradientMid1 text-white py-2 rounded-md font-semibold transition"
-            >
-              Agregar {form.type === 'ingreso' ? 'Ingreso' : 'Egreso'}
-            </button>
-
-            <p className="text-xs text-white/60 mt-2">
-              Recuerda revisar bien la información antes de guardar el movimiento.
-            </p>
-          </form>
-
-          {/* Historial */}
-          <div className="bg-white/5 p-6 rounded-xl w-full">
-            <h2 className="text-sm font-semibold mb-4">Movimientos recientes</h2>
-            <ul className="space-y-3 text-sm">
-              {recentMovements.map((item, idx) => (
-                <li key={idx} className="flex justify-between items-start">
-                  <div className={`flex items-center gap-3 ${item.type === 'ingreso' ? 'text-green-400' : 'text-red-400'}`}>
-                    {item.type === 'ingreso' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                    <div>
-                      <p className="font-medium capitalize">{item.type} {item.date}</p>
-                      <p className="text-white/70 text-xs">{item.description}</p>
-                    </div>
+        {/* Historial */}
+        <div className="bg-white/5 p-6 rounded-xl w-full">
+          <h2 className="text-sm font-semibold mb-4">Movimientos recientes</h2>
+          <ul className="space-y-3 text-sm">
+            {recentMovements.map((item, idx) => (
+              <li key={idx} className="flex justify-between items-start">
+                <div
+                  className={`flex items-center gap-3 ${
+                    item.type === 'ingreso' ? 'text-green-400' : 'text-red-400'
+                  }`}
+                >
+                  {item.type === 'ingreso' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                  <div>
+                    <p className="font-medium capitalize">{item.type} {item.date}</p>
+                    <p className="text-white/70 text-xs">{item.description}</p>
                   </div>
-                  <span className={`font-semibold ${item.type === 'ingreso' ? 'text-green-300' : 'text-red-300'}`}>
-                    {item.type === 'egreso' ? '-' : '+'}${item.amount.toLocaleString('es-CO')}
-                  </span>
-                </li>
-              ))}
-            </ul>
+                </div>
+                <span
+                  className={`font-semibold ${
+                    item.type === 'ingreso' ? 'text-green-300' : 'text-red-300'
+                  }`}
+                >
+                  {item.type === 'egreso' ? '-' : '+'}${item.amount.toLocaleString('es-CO')}
+                </span>
+              </li>
+            ))}
+          </ul>
 
-            <div className="mt-6">
-              <Link
-                to="/dashboard/historial"
-                className="inline-flex items-center gap-2 text-sm text-purple-300 hover:underline"
-              >
-                Ver todo el historial
-              </Link>
-            </div>
+          <div className="mt-6">
+            <Link
+              to="/dashboard/historial"
+              className="inline-flex items-center gap-2 text-sm text-purple-300 hover:underline"
+            >
+              Ver todo el historial
+            </Link>
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 };

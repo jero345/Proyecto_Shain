@@ -1,42 +1,13 @@
 import { useState } from 'react';
 import { ArrowUpRight, ArrowDownRight, Plus } from 'lucide-react';
+import { PageContainer } from '@components/PageContainer';
 
 const mockMovements = [
-  {
-    id: 1,
-    type: 'ingreso',
-    date: 'Hoy',
-    description: 'Venta gorra negra',
-    amount: 300,
-  },
-  {
-    id: 2,
-    type: 'ingreso',
-    date: 'Ayer',
-    description: 'Venta pantalón beige talla L',
-    amount: 2100,
-  },
-  {
-    id: 3,
-    type: 'egreso',
-    date: '14 Jun',
-    description: 'Factura',
-    amount: -1700,
-  },
-  {
-    id: 4,
-    type: 'ingreso',
-    date: '14 Jun',
-    description: 'Venta medias rojas',
-    amount: 700,
-  },
-  {
-    id: 5,
-    type: 'egreso',
-    date: '14 Jun',
-    description: 'Factura',
-    amount: -1700,
-  },
+  { id: 1, type: 'ingreso', date: 'Hoy', description: 'Venta gorra negra', amount: 300 },
+  { id: 2, type: 'ingreso', date: 'Ayer', description: 'Venta pantalón beige talla L', amount: 2100 },
+  { id: 3, type: 'egreso', date: '14 Jun', description: 'Factura', amount: -1700 },
+  { id: 4, type: 'ingreso', date: '14 Jun', description: 'Venta medias rojas', amount: 700 },
+  { id: 5, type: 'egreso', date: '14 Jun', description: 'Factura', amount: -1700 },
 ];
 
 export const History = () => {
@@ -44,16 +15,13 @@ export const History = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredMovements = mockMovements.filter((item) => {
-    const matchesType =
-      filterType === 'todos' || item.type === filterType;
-    const matchesSearch = item.description
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'todos' || item.type === filterType;
+    const matchesSearch = item.description.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesType && matchesSearch;
   });
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 bg-cover p-6 text-white overflow-x-hidden">
+    <PageContainer>
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -116,15 +84,10 @@ export const History = () => {
         ) : (
           <ul className="space-y-3 text-sm">
             {filteredMovements.map((item) => (
-              <li
-                key={item.id}
-                className="flex justify-between items-start"
-              >
+              <li key={item.id} className="flex justify-between items-start">
                 <div
                   className={`flex items-center gap-3 ${
-                    item.type === 'ingreso'
-                      ? 'text-green-400'
-                      : 'text-red-400'
+                    item.type === 'ingreso' ? 'text-green-400' : 'text-red-400'
                   }`}
                 >
                   {item.type === 'ingreso' ? (
@@ -136,16 +99,12 @@ export const History = () => {
                     <p className="font-medium capitalize">
                       {item.type} - {item.date}
                     </p>
-                    <p className="text-white/70 text-xs">
-                      {item.description}
-                    </p>
+                    <p className="text-white/70 text-xs">{item.description}</p>
                   </div>
                 </div>
                 <span
                   className={`font-semibold ${
-                    item.type === 'ingreso'
-                      ? 'text-green-300'
-                      : 'text-red-300'
+                    item.type === 'ingreso' ? 'text-green-300' : 'text-red-300'
                   }`}
                 >
                   {item.amount < 0 ? '-' : '+'}${Math.abs(item.amount).toLocaleString('es-CO')}
@@ -155,6 +114,6 @@ export const History = () => {
           </ul>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 };

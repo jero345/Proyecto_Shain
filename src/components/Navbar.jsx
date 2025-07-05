@@ -1,37 +1,53 @@
 import { useState } from "react";
-import { Plus, Bell, User } from "lucide-react";
+import { Plus, Bell, User, Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "@assets/logo.png";
 import { navItems } from "@constants/navigation";
 
-export const Navbar = () => {
+export const Navbar = ({ onToggleMenu }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
-  // Accesos rápidos actualizados
-  const quickAccess = navItems.filter(item =>
+  // Filtra accesos rápidos
+  const quickAccess = navItems.filter((item) =>
     [
       "Agregar movimientos",
       "Historial",
       "Finanzas",
       "Notificaciones",
       "Configuraciones",
-      "ChatBot"
+      "ChatBot",
     ].includes(item.label)
   );
 
   return (
-    <header className="w-full bg-[#242222] shadow px-4 py-3 flex items-center justify-between fixed top-0 z-50">
-      
-      {/* Logo + botón + menú */}
+    <header
+      className="
+        fixed top-0 left-0 right-0 z-50 
+        bg-[#242222] shadow px-4 py-3 
+        flex items-center justify-between
+        md:pl-72
+      "
+    >
+      {/* Botón toggle sidebar (SOLO MOBILE) + Logo + Quick Access */}
       <div className="flex items-center gap-3 relative">
+        {/* Toggle sidebar */}
+        <button
+          onClick={onToggleMenu}
+          className="md:hidden p-1 text-white hover:scale-105 transition"
+          aria-label="Abrir menú lateral"
+        >
+          <Menu size={24} />
+        </button>
+
+        {/* Logo */}
         <img
           src={logo}
           alt="Logo Shain"
           className="w-28 h-10 object-contain"
         />
 
-        {/* Botón funcional al lado del logo */}
+        {/* Botón acceso rápido */}
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -48,7 +64,9 @@ export const Navbar = () => {
                   to={item.to}
                   onClick={() => setMenuOpen(false)}
                   className={`flex items-center gap-2 px-4 py-3 hover:bg-gray-100 ${
-                    location.pathname === item.to ? "text-blue-600 font-semibold" : ""
+                    location.pathname === item.to
+                      ? "text-blue-600 font-semibold"
+                      : ""
                   }`}
                 >
                   {item.icon}
@@ -60,12 +78,12 @@ export const Navbar = () => {
         </div>
       </div>
 
-      {/* Texto al centro */}
+      {/* Texto central solo en escritorio */}
       <div className="hidden md:block text-sm text-white">
         Hola Sebastián, este es tu resumen de 24 abr 2025
       </div>
 
-      {/* Notificaciones y avatar */}
+      {/* Notificación y avatar */}
       <div className="flex items-center space-x-4">
         <div className="relative">
           <Bell className="w-5 h-5 text-gray-300" />
