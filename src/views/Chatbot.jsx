@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export const ChatBot = () => {
   const [messages, setMessages] = useState([
@@ -54,6 +54,16 @@ export const ChatBot = () => {
 
   const [input, setInput] = useState('');
 
+  // Ref para auto-scroll
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll cuando se agregue mensaje nuevo
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   const handleSend = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -77,9 +87,11 @@ export const ChatBot = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6 flex flex-col min-h-screen bg-custom-gradient bg-cover text-white">
+      {/* Título */}
       <h1 className="text-2xl font-bold mb-4">ShainBot</h1>
 
-      <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+      {/* Contenedor de mensajes */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-6 pr-2">
         {Object.entries(groupedByDate).map(([date, msgs]) => (
           <div key={date}>
             <p className="text-xs text-white/60 mb-2">{date}</p>
@@ -90,7 +102,7 @@ export const ChatBot = () => {
                   className={`w-fit max-w-[80%] px-4 py-2 rounded-lg text-sm ${
                     msg.sender === 'user'
                       ? 'bg-gradientMid1 self-end ml-auto'
-                      : 'bg-white/10 text-white/90 self-start'
+                      : 'text-white/90 self-start'
                   }`}
                 >
                   {msg.text}
@@ -99,9 +111,15 @@ export const ChatBot = () => {
             </div>
           </div>
         ))}
+        {/* Punto de referencia para scroll automático */}
+        <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="mt-6 flex flex-col sm:flex-row gap-2">
+      {/* Formulario para enviar mensajes */}
+      <form
+        onSubmit={handleSend}
+        className="mt-4 flex flex-col sm:flex-row gap-2"
+      >
         <input
           type="text"
           value={input}

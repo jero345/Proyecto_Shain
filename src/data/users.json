@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Sebastian Torres",
+      "email": "sebastian@example.com",
+      "password": "123456",
+      "role": "admin"
+    },
+    {
+      "id": 2,
+      "name": "Ana Martínez",
+      "email": "ana@example.com",
+      "password": "password123",
+      "role": "user"
+    },
+    {
+      "id": 3,
+      "name": "Carlos López",
+      "email": "carlos@example.com",
+      "password": "shain2025",
+      "role": "user"
+    },
+    {
+      "id": 4,
+      "name": "María Gómez",
+      "email": "maria@example.com",
+      "password": "test1234",
+      "role": "manager"
+    }
+  ]
+}

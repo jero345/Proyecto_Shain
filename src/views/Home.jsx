@@ -6,6 +6,21 @@ import {
   Pencil,
 } from 'lucide-react';
 
+import { Chart } from '@components/Chart'; // 👈 Asegúrate de importar bien tu componente Chart
+
+// Datos simulados para la gráfica
+const mockData = [
+  { date: '19 May', ingresos: 8000, egresos: 2800 },
+  { date: '22 May', ingresos: 4000, egresos: 1200 },
+  { date: '28 May', ingresos: 3500, egresos: 3100 },
+  { date: '31 May', ingresos: 2000, egresos: 2200 },
+  { date: '3 Jun', ingresos: 3300, egresos: 1500 },
+  { date: '6 Jun', ingresos: 2800, egresos: 3200 },
+  { date: '9 Jun', ingresos: 4100, egresos: 2500 },
+  { date: '12 Jun', ingresos: 1000, egresos: 4000 },
+  { date: '15 Jun', ingresos: 3200, egresos: 2000 },
+];
+
 export const Home = () => {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6 text-white bg-zinc-900">
@@ -57,13 +72,8 @@ export const Home = () => {
         </div>
       </div>
 
-      {/* Gráfica */}
-      <div className="bg-white/5 rounded-xl p-4 mb-6">
-        <h3 className="text-sm font-semibold mb-4">Ingresos vs Egresos (últimos 30 días)</h3>
-        <div className="h-48 bg-white/10 rounded-md flex items-center justify-center text-white/30">
-          [Aquí irá la gráfica]
-        </div>
-      </div>
+      {/* Gráfica dinámica */}
+      <Chart data={mockData} />
 
       {/* Movimientos recientes */}
       <div className="bg-white/5 rounded-xl p-4 mb-6 overflow-x-auto">
