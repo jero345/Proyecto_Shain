@@ -1,17 +1,23 @@
 import { Bell, Plus, User } from "lucide-react";
-import logo from "@assets/logo.png"; // Asegúrate de esta ruta correcta
+import logo from "@assets/logo.png";
 
-export const Navbar = () => {
+export const Navbar = ({ setOpen }) => {
   return (
     <header className="w-full bg-[#242222] shadow px-4 py-3 flex items-center justify-between fixed top-0 z-50">
-      {/* Logo a la izquierda con tamaño mayor */}
+      {/* Logo a la izquierda */}
       <div className="flex items-center space-x-2">
         <img
           src={logo}
           alt="Logo Shain"
           className="w-32 h-12 object-contain"
         />
-        <Plus className="w-4 h-4 text-gray-400" />
+        {/* Botón PLUS abre Navigation solo en mobile */}
+        <button
+          className="block lg:hidden"
+          onClick={() => setOpen(true)}
+        >
+          <Plus className="w-5 h-5 text-gray-400" />
+        </button>
       </div>
 
       {/* Saludo centrado */}

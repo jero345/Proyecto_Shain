@@ -53,7 +53,7 @@ export const History = () => {
   });
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 bg-cover p-6 text-white overflow-x-hidden">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 text-white">
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -109,12 +109,12 @@ export const History = () => {
       </div>
 
       {/* Lista de movimientos */}
-      <div className="bg-white/5 rounded-xl p-4">
+      <div className="bg-white/5 rounded-xl p-4 overflow-x-auto">
         <h3 className="text-sm font-semibold mb-4">Resultados</h3>
         {filteredMovements.length === 0 ? (
           <p className="text-sm text-white/60">No se encontraron movimientos.</p>
         ) : (
-          <ul className="space-y-3 text-sm">
+          <ul className="space-y-3 text-sm min-w-[300px]">
             {filteredMovements.map((item) => (
               <li
                 key={item.id}

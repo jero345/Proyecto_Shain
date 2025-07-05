@@ -62,7 +62,7 @@ export const Notifications = () => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 bg-cover p-6 text-white overflow-x-hidden">
+    <div className="w-full max-w-4xl mx-auto px-4 py-6 min-h-screen text-white">
       <h1 className="text-2xl font-bold mb-6">Historial de notificaciones</h1>
 
       <div className="space-y-4">

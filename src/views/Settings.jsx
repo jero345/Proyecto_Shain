@@ -33,7 +33,7 @@ export const Settings = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-custom-gradient bg-cover p-6 text-white overflow-x-hidden">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 text-white">
       <h1 className="text-2xl font-bold mb-6">Configuraciones del negocio</h1>
 
       {/* Información del negocio */}
@@ -44,7 +44,7 @@ export const Settings = () => {
             <img src={logo} alt="Logo" className="w-24 h-24 object-contain rounded-full" />
             <button className="text-sm text-purple-300 hover:underline">Actualizar logo</button>
           </div>
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">Nombre del negocio</label>
               <input
@@ -65,7 +65,7 @@ export const Settings = () => {
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-gradientStart"
               />
             </div>
-            <div className="md:col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-sm font-semibold mb-1">Tipo de negocio</label>
               <input
                 type="text"

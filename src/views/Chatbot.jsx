@@ -76,21 +76,21 @@ export const ChatBot = () => {
   }, {});
 
   return (
-    <div className="w-full min-h-screen bg-custom-gradient bg-cover p-6 text-white flex flex-col">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 flex flex-col min-h-screen bg-custom-gradient bg-cover text-white">
       <h1 className="text-2xl font-bold mb-4">ShainBot</h1>
 
       <div className="flex-1 overflow-y-auto space-y-6 pr-2">
         {Object.entries(groupedByDate).map(([date, msgs]) => (
           <div key={date}>
             <p className="text-xs text-white/60 mb-2">{date}</p>
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col">
               {msgs.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`max-w-[80%] px-4 py-2 rounded-lg text-sm ${
+                  className={`w-fit max-w-[80%] px-4 py-2 rounded-lg text-sm ${
                     msg.sender === 'user'
                       ? 'bg-gradientMid1 self-end ml-auto'
-                      : 'bg-white/10 text-white/90'
+                      : 'bg-white/10 text-white/90 self-start'
                   }`}
                 >
                   {msg.text}
@@ -101,7 +101,7 @@ export const ChatBot = () => {
         ))}
       </div>
 
-      <form onSubmit={handleSend} className="mt-6 flex gap-2">
+      <form onSubmit={handleSend} className="mt-6 flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           value={input}

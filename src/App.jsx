@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useState } from 'react';
+
 import { Login } from '@views/Login';
 import { Signup } from '@views/Signup';
 import { Home } from '@views/Home';
@@ -6,21 +8,20 @@ import { Finance } from '@views/Finance';
 import { History } from '@views/History';
 import { Notifications } from '@views/Notifications';
 import { AddMovement } from '@views/AddMovement';
-import { ChatBot } from '@views/ChatBot'; // 👈 Importación nueva
-import { Settings } from '@views/Settings'; // 👈 Importación nueva
+import { ChatBot } from '@views/ChatBot';
+import { Settings } from '@views/Settings';
 
 import { Navigation } from '@components/Navigation';
 import { Navbar } from '@components/Navbar';
 
-
 // Layout protegido con navegación y barra superior
-function ProtectedLayout({ children }) {
+function ProtectedLayout({ children, open, setOpen }) {
   return (
     <>
-      <Navbar />
+      <Navbar setOpen={setOpen} />
       <div className="flex">
-        <Navigation />
-        <main className="ml-60 min-h-screen w-full bg-gray-50 dark:bg-gray-900 p-4 pt-16 overflow-x-hidden">
+        <Navigation open={open} setOpen={setOpen} />
+        <main className="ml-0 lg:ml-60 min-h-screen w-full bg-gray-50 dark:bg-gray-900 p-4 pt-16 overflow-x-hidden">
           {children}
         </main>
       </div>
@@ -29,6 +30,8 @@ function ProtectedLayout({ children }) {
 }
 
 function App() {
+  const [open, setOpen] = useState(false);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -37,13 +40,34 @@ function App() {
         <Route path="/signup" element={<Signup />} />
 
         {/* Rutas protegidas */}
-        <Route path="/dashboard/home" element={<ProtectedLayout><Home /></ProtectedLayout>} />
-        <Route path="/dashboard/finanzas" element={<ProtectedLayout><Finance /></ProtectedLayout>} />
-        <Route path="/dashboard/historial" element={<ProtectedLayout><History /></ProtectedLayout>} />
-        <Route path="/dashboard/notificaciones" element={<ProtectedLayout><Notifications /></ProtectedLayout>} />
-        <Route path="/dashboard/agregar-movimiento" element={<ProtectedLayout><AddMovement /></ProtectedLayout>} />
-        <Route path="/dashboard/chatbot" element={<ProtectedLayout><ChatBot /></ProtectedLayout>} />
-         <Route path="/dashboard/configuraciones" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+        <Route
+          path="/dashboard/home"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><Home /></ProtectedLayout>}
+        />
+        <Route
+          path="/dashboard/finanzas"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><Finance /></ProtectedLayout>}
+        />
+        <Route
+          path="/dashboard/historial"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><History /></ProtectedLayout>}
+        />
+        <Route
+          path="/dashboard/notificaciones"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><Notifications /></ProtectedLayout>}
+        />
+        <Route
+          path="/dashboard/agregar-movimiento"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><AddMovement /></ProtectedLayout>}
+        />
+        <Route
+          path="/dashboard/chatbot"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><ChatBot /></ProtectedLayout>}
+        />
+        <Route
+          path="/dashboard/configuraciones"
+          element={<ProtectedLayout open={open} setOpen={setOpen}><Settings /></ProtectedLayout>}
+        />
       </Routes>
     </BrowserRouter>
   );

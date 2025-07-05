@@ -4,24 +4,24 @@ import logo from '@assets/logo.png';
 
 export const Login = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-custom-gradient px-4">
+    <div className="min-h-screen flex items-center justify-center bg-custom-gradient px-4 py-8">
       <div className="flex flex-col lg:flex-row w-full max-w-6xl rounded-3xl overflow-hidden shadow-2xl bg-white/5 backdrop-blur-md">
 
         {/* Lado izquierdo: formulario */}
-        <div className="relative w-full lg:w-1/2 p-8 sm:p-12 text-white bg-gradient-to-br from-gradientMid2 to-gradientMid1">
+        <div className="relative w-full lg:w-1/2 p-6 sm:p-10 md:p-12 text-white bg-gradient-to-br from-gradientMid2 to-gradientMid1">
           {/* Curva decorativa */}
           <div className="absolute inset-0 bg-purple-600 rounded-br-[80%] lg:rounded-tr-full opacity-10 z-0" />
 
           <div className="relative z-10">
-            <h2 className="text-4xl font-extrabold mb-2">Bienvenido</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Bienvenido</h2>
             <p className="mb-6 text-sm text-purple-200">Nos alegra verte otra vez</p>
 
-            <h3 className="text-xl font-semibold mb-4">Vamos a iniciar sesión</h3>
+            <h3 className="text-lg sm:text-xl font-semibold mb-4">Vamos a iniciar sesión</h3>
 
-            <form className="space-y-4">
+            <form className="space-y-4 text-sm">
               {/* Usuario */}
               <div>
-                <label className="text-sm font-semibold">Usuario</label>
+                <label className="block font-semibold">Usuario</label>
                 <input
                   type="text"
                   placeholder="Ingresa tu usuario"
@@ -31,7 +31,7 @@ export const Login = () => {
 
               {/* Contraseña */}
               <div>
-                <label className="text-sm font-semibold">Contraseña</label>
+                <label className="block font-semibold">Contraseña</label>
                 <input
                   type="password"
                   placeholder="Ingresa tu contraseña"
@@ -70,7 +70,7 @@ export const Login = () => {
           </div>
         </div>
 
-        {/* Lado derecho: imagen + logo alineado a la derecha */}
+        {/* Lado derecho: imagen + logo (solo en pantallas grandes) */}
         <div className="hidden lg:block lg:w-1/2 relative">
           <img
             src={loginImage}
@@ -81,7 +81,7 @@ export const Login = () => {
             <img
               src={logo}
               alt="Logo"
-              className="w-48 h-48 object-contain drop-shadow-md"
+              className="w-24 h-24 object-contain drop-shadow-md"
             />
           </div>
         </div>

@@ -30,7 +30,7 @@ export const AddMovement = () => {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 bg-cover p-6 text-white overflow-x-hidden">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 text-white">
       <h1 className="text-2xl font-bold mb-6">Agregar Movimiento</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -39,7 +39,7 @@ export const AddMovement = () => {
           {/* Tipo de movimiento */}
           <div>
             <label className="block text-sm font-semibold mb-1">¿Qué tipo de movimiento fue?</label>
-            <div className="flex gap-6 mt-1">
+            <div className="flex flex-col sm:flex-row gap-4 mt-1">
               <label className="flex items-center gap-2">
                 <input
                   type="radio"
@@ -91,7 +91,7 @@ export const AddMovement = () => {
           {/* Tipo de frecuencia */}
           <div>
             <label className="block text-sm font-semibold mb-1">¿Qué tipo es?*</label>
-            <div className="flex gap-6 mt-1">
+            <div className="flex flex-col sm:flex-row gap-4 mt-1">
               <label className="flex items-center gap-2">
                 <input
                   type="radio"
@@ -137,14 +137,14 @@ export const AddMovement = () => {
 
           {/* Nota */}
           <p className="text-xs text-white/60 mt-2">
-            Recuerda revisar bien la información antes de guardar el movimiento. Verifica que el tipo de movimiento, el valor ingresado, la fecha, el tipo (nuevo o recurrente) y la descripción sean correctos.
+            Revisa bien la información antes de guardar. Verifica tipo de movimiento, valor, fecha, frecuencia y descripción.
           </p>
         </form>
 
         {/* Historial reciente */}
-        <div className="bg-white/5 p-6 rounded-xl">
+        <div className="bg-white/5 p-6 rounded-xl overflow-x-auto">
           <h2 className="text-sm font-semibold mb-4">Movimientos recientes</h2>
-          <ul className="space-y-3 text-sm">
+          <ul className="space-y-3 text-sm min-w-[300px]">
             {recentMovements.map((item, idx) => (
               <li key={idx} className="flex justify-between items-start">
                 <div className={`flex items-center gap-3 ${item.type === 'ingreso' ? 'text-green-400' : 'text-red-400'}`}>
