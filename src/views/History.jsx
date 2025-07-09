@@ -1,155 +1,120 @@
-import { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, Plus } from 'lucide-react';
-
-const mockMovements = [
-  {
-    id: 1,
-    type: 'ingreso',
-    date: 'Hoy',
-    description: 'Venta gorra negra',
-    amount: 300,
-  },
-  {
-    id: 2,
-    type: 'ingreso',
-    date: 'Ayer',
-    description: 'Venta pantalón beige talla L',
-    amount: 2100,
-  },
-  {
-    id: 3,
-    type: 'egreso',
-    date: '14 Jun',
-    description: 'Factura',
-    amount: -1700,
-  },
-  {
-    id: 4,
-    type: 'ingreso',
-    date: '14 Jun',
-    description: 'Venta medias rojas',
-    amount: 700,
-  },
-  {
-    id: 5,
-    type: 'egreso',
-    date: '14 Jun',
-    description: 'Factura',
-    amount: -1700,
-  },
-];
+import { useState, useEffect } from 'react';
+import { ArrowUpRight, ArrowDownRight, Plus, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const History = () => {
+  const [movements, setMovements] = useState([]);
   const [filterType, setFilterType] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredMovements = mockMovements.filter((item) => {
-    const matchesType =
-      filterType === 'todos' || item.type === filterType;
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('movements')) || [];
+    setMovements(saved);
+  }, []);
+
+  const filteredMovements = movements.filter((item) => {
+    const matchesType = filterType === 'todos' || item.type === filterType;
     const matchesSearch = item.description
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(searchTerm.toLowerCase());
     return matchesType && matchesSearch;
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-6 text-white">
-      {/* Encabezado */}
+    <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
+      {/* Encabezado con ícono igual a tu imagen */}
+      <div className="flex items-center gap-2 mb-4">
+        <FileText className="w-4 h-4 text-white/60" />
+        <h1 className="text-base font-semibold text-white/80">Historial</h1>
+      </div>
+
+      {/* Título y botón */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Movimientos recientes</h1>
-        </div>
-        <button className="flex items-center gap-2 bg-gradientStart hover:bg-gradientMid1 px-4 py-2 rounded-md text-sm font-medium transition">
-          <Plus size={16} /> Agregar Movimiento
+        <h2 className="text-2xl font-bold">Movimientos recientes</h2>
+        <Link to="/dashboard/agregar-movimiento">
+          <button className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full text-sm font-medium transition">
+            <Plus size={16} /> Agregar Movimiento
+          </button>
+        </Link>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setFilterType('todos')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+            filterType === 'todos'
+              ? 'bg-orange-500 text-white'
+              : 'bg-white/10 hover:bg-white/20'
+          }`}
+        >
+          Ver Todos
+        </button>
+        <button
+          onClick={() => setFilterType('ingreso')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+            filterType === 'ingreso'
+              ? 'bg-white/10 border border-green-500 text-green-300'
+              : 'bg-white/5 hover:bg-white/10 text-green-400'
+          }`}
+        >
+          Ver Ingresos
+        </button>
+        <button
+          onClick={() => setFilterType('egreso')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+            filterType === 'egreso'
+              ? 'bg-white/10 border border-red-500 text-red-300'
+              : 'bg-white/5 hover:bg-white/10 text-red-400'
+          }`}
+        >
+          Ver Egresos
         </button>
       </div>
 
-      {/* Filtros y búsqueda */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div className="flex flex-wrap gap-2 text-sm">
-          <button
-            onClick={() => setFilterType('todos')}
-            className={`px-4 py-1.5 rounded-md transition ${
-              filterType === 'todos'
-                ? 'bg-white/20 text-white font-semibold'
-                : 'bg-white/10 hover:bg-white/20'
-            }`}
-          >
-            Ver Todos
-          </button>
-          <button
-            onClick={() => setFilterType('ingreso')}
-            className={`px-4 py-1.5 rounded-md transition ${
-              filterType === 'ingreso'
-                ? 'bg-green-500/30 text-green-200 font-semibold'
-                : 'bg-green-500/20 hover:bg-green-500/30 text-green-300'
-            }`}
-          >
-            Ver Ingresos
-          </button>
-          <button
-            onClick={() => setFilterType('egreso')}
-            className={`px-4 py-1.5 rounded-md transition ${
-              filterType === 'egreso'
-                ? 'bg-red-500/30 text-red-200 font-semibold'
-                : 'bg-red-500/20 hover:bg-red-500/30 text-red-300'
-            }`}
-          >
-            Ver Egresos
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar movimiento..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full md:w-64 px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
-        />
-      </div>
-
-      {/* Lista de movimientos */}
-      <div className="bg-white/5 rounded-xl p-4 overflow-x-auto">
-        <h3 className="text-sm font-semibold mb-4">Resultados</h3>
+      {/* Lista */}
+      <div className="bg-[#0b0f19] rounded-xl p-6">
+        <h3 className="text-base font-bold mb-4">
+          Todos los movimientos recientes
+        </h3>
         {filteredMovements.length === 0 ? (
           <p className="text-sm text-white/60">No se encontraron movimientos.</p>
         ) : (
-          <ul className="space-y-3 text-sm min-w-[300px]">
-            {filteredMovements.map((item) => (
+          <ul className="space-y-4">
+            {filteredMovements.map((item, idx) => (
               <li
-                key={item.id}
-                className="flex justify-between items-start"
+                key={idx}
+                className="flex justify-between items-center bg-[#0f172a] border border-white/5 rounded-2xl px-4 py-4"
               >
-                <div
-                  className={`flex items-center gap-3 ${
-                    item.type === 'ingreso'
-                      ? 'text-green-400'
-                      : 'text-red-400'
-                  }`}
-                >
-                  {item.type === 'ingreso' ? (
-                    <ArrowUpRight size={16} />
-                  ) : (
-                    <ArrowDownRight size={16} />
-                  )}
-                  <div>
-                    <p className="font-medium capitalize">
-                      {item.type} - {item.date}
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      item.type === 'ingreso' ? 'bg-green-600' : 'bg-red-600'
+                    }`}
+                  >
+                    {item.type === 'ingreso' ? (
+                      <ArrowUpRight size={16} />
+                    ) : (
+                      <ArrowDownRight size={16} />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold capitalize">
+                      {item.type}
                     </p>
-                    <p className="text-white/70 text-xs">
-                      {item.description}
+                    <p className="text-xs text-white/50">
+                      {item.date}
                     </p>
                   </div>
                 </div>
-                <span
-                  className={`font-semibold ${
-                    item.type === 'ingreso'
-                      ? 'text-green-300'
-                      : 'text-red-300'
-                  }`}
-                >
-                  {item.amount < 0 ? '-' : '+'}${Math.abs(item.amount).toLocaleString('es-CO')}
-                </span>
+                <div className="text-right">
+                  <p className="text-sm font-bold">
+                    ${Number(item.amount).toLocaleString('es-CO')}
+                  </p>
+                  <p className="text-xs text-white/50">
+                    {item.description}
+                  </p>
+                </div>
               </li>
             ))}
           </ul>

@@ -5,9 +5,15 @@ import { useNavigate } from "react-router-dom";
 export const Navbar = ({ setOpen }) => {
   const navigate = useNavigate();
 
+  // ✅ Cerrar sesión
   const handleLogout = () => {
-    localStorage.removeItem('user'); // 🔑 Elimina la sesión guardada
+    localStorage.removeItem('user'); // o 'authToken' si lo usas
     navigate('/'); // 🔑 Redirige al login
+  };
+
+  // ✅ Ir a perfil
+  const goToProfile = () => {
+    navigate('/dashboard/profile');
   };
 
   return (
@@ -29,7 +35,7 @@ export const Navbar = ({ setOpen }) => {
 
       {/* Saludo */}
       <div className="hidden md:block text-sm text-white">
-        Hola Sebastian, este es tu resumen de 24 abr 2025
+        Hola Sebastián, este es tu resumen de 24 abr 2025
       </div>
 
       {/* Acciones derecha */}
@@ -39,9 +45,14 @@ export const Navbar = ({ setOpen }) => {
           <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
         </div>
 
-        <div className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center">
+        {/* ✅ Avatar clickable para ir a perfil */}
+        <button
+          onClick={goToProfile}
+          className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center hover:ring-2 hover:ring-white/50 transition"
+          title="Mi perfil"
+        >
           <User className="w-4 h-4 text-white" />
-        </div>
+        </button>
 
         {/* Botón cerrar sesión */}
         <button

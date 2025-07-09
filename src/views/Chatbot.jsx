@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
+import { MessageSquare, Bot } from 'lucide-react';
 
 export const ChatBot = () => {
   const [messages, setMessages] = useState([
@@ -18,7 +19,7 @@ export const ChatBot = () => {
       id: 3,
       date: '9 Jun',
       sender: 'bot',
-      text: 'Venta registrada',
+      text: '✅ Venta registrada',
     },
     {
       id: 4,
@@ -54,16 +55,6 @@ export const ChatBot = () => {
 
   const [input, setInput] = useState('');
 
-  // Ref para auto-scroll
-  const messagesEndRef = useRef(null);
-
-  // Auto-scroll cuando se agregue mensaje nuevo
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
   const handleSend = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -86,50 +77,63 @@ export const ChatBot = () => {
   }, {});
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-6 flex flex-col min-h-screen bg-custom-gradient bg-cover text-white">
-      {/* Título */}
-      <h1 className="text-2xl font-bold mb-4">ShainBot</h1>
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 flex flex-col min-h-screen bg-gradient-to-br from-[#1a1a1a] via-[#191027] to-[#0d0818] text-white">
+      {/* ✅ Título con ícono burbuja */}
+      <h1 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <MessageSquare className="w-4 h-4 text-white/70" /> ChatBot
+      </h1>
 
-      {/* Contenedor de mensajes */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-6 pr-2">
+      <div className="flex-1 overflow-y-auto space-y-6 pr-2">
         {Object.entries(groupedByDate).map(([date, msgs]) => (
           <div key={date}>
-            <p className="text-xs text-white/60 mb-2">{date}</p>
-            <div className="space-y-2 flex flex-col">
+            <p className="text-xs text-white/40 mb-2">{date}</p>
+            <div className="space-y-3 flex flex-col">
               {msgs.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`w-fit max-w-[80%] px-4 py-2 rounded-lg text-sm ${
-                    msg.sender === 'user'
-                      ? 'bg-gradientMid1 self-end ml-auto'
-                      : 'text-white/90 self-start'
+                  className={`flex items-start gap-2 ${
+                    msg.sender === 'bot' ? 'self-start' : 'self-end'
                   }`}
                 >
-                  {msg.text}
+                  {msg.sender === 'bot' && (
+                    <Bot className="w-4 h-4 text-white/50 mt-1" />
+                  )}
+
+                  <div
+                    className={`w-fit max-w-[75%] px-4 py-2 rounded-lg text-sm leading-relaxed ${
+                      msg.sender === 'user'
+                        ? 'bg-[#1a1a1a] text-white ml-auto'
+                        : 'bg-[#1c1b2a] text-white/90'
+                    }`}
+                  >
+                    <span
+                      className={
+                        msg.text.toLowerCase().includes('venta registrada')
+                          ? 'text-green-400 font-semibold'
+                          : ''
+                      }
+                    >
+                      {msg.text}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         ))}
-        {/* Punto de referencia para scroll automático */}
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Formulario para enviar mensajes */}
-      <form
-        onSubmit={handleSend}
-        className="mt-4 flex flex-col sm:flex-row gap-2"
-      >
+      <form onSubmit={handleSend} className="mt-6 flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Escribe un mensaje..."
-          className="flex-1 px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-gradientStart"
+          className="flex-1 px-4 py-2 rounded-full bg-[#1a1a1a] text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
         <button
           type="submit"
-          className="bg-gradientStart hover:bg-gradientMid1 px-4 py-2 rounded-md font-semibold transition"
+          className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-full font-semibold transition"
         >
           Enviar
         </button>
