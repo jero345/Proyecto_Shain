@@ -35,9 +35,6 @@ export const AddMovement = () => {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
       <h1 className="text-3xl font-bold mb-2">Agregar Movimiento</h1>
-      <p className="text-white/70 mb-8 max-w-2xl">
-        Genera movimientos para llevar el control de ingresos y egresos en caja, registrando cada transacción con su valor, tipo y descripción.
-      </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Formulario */}

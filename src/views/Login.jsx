@@ -66,7 +66,7 @@ export const Login = () => {
                   className="w-full mt-1 px-4 py-2 rounded-md bg-white/10 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-gradientStart"
                   required
                 />
-                <a href="#" className="text-xs text-purple-300 hover:underline mt-1 inline-block">
+                <a href="/recuperar" className="text-xs text-purple-300 hover:underline mt-1 inline-block">
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>

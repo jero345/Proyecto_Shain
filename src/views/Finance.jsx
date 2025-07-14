@@ -1,14 +1,30 @@
 import { useNavigate } from 'react-router-dom';
-import {
-  AlertTriangle,
-  BarChart,
-} from 'lucide-react';
-
+import { useEffect, useState } from 'react';
+import { AlertTriangle, BarChart } from 'lucide-react';
 import { Chart } from '@components/Chart';
 import { MiniCardChart } from '@components/MiniCardChart';
 
 export const Finance = () => {
   const navigate = useNavigate();
+
+  // 👉 Simula ingresos totales del mes (ajústalo a tu lógica real)
+  const totalIngresos = 4200;
+
+  // ✅ Lee meta mensual guardada
+  const [goal, setGoal] = useState(5000);
+
+  useEffect(() => {
+    const savedBusiness = JSON.parse(localStorage.getItem('business'));
+    if (savedBusiness?.goal) {
+      setGoal(Number(savedBusiness.goal));
+    }
+  }, []);
+
+  // ✅ Calcula porcentaje completado
+  const percentage = goal > 0 ? Math.min((totalIngresos / goal) * 100, 100) : 0;
+  const circleRadius = 35;
+  const circleCircumference = 2 * Math.PI * circleRadius;
+  const progress = circleCircumference - (percentage / 100) * circleCircumference;
 
   const chartData = [
     { date: '1 Jun', Ingresos: 2200, Egresos: 1800 },
@@ -23,7 +39,7 @@ export const Finance = () => {
   const miniCardData = [
     {
       title: 'Ingresos Totales',
-      amount: '$5,400k',
+      amount: `$${(totalIngresos / 1000).toFixed(1)}k`,
       percentage: '+5%',
       data: [2000, 2400, 2100, 2800, 2500, 2900, 3200],
       color: 'green',
@@ -58,11 +74,15 @@ export const Finance = () => {
         <div className="flex flex-col md:flex-row justify-between lg:col-span-2 bg-[#0f172a] rounded-xl border border-white/10 p-6 shadow gap-6">
           {/* Izquierda: Resumen */}
           <div>
-            <h2 className="text-4xl font-bold mb-1">$2,550.00</h2>
+            <h2 className="text-4xl font-bold mb-1">
+              ${totalIngresos.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </h2>
             <p className="text-xs text-white/70 mb-4">Total hoy</p>
             <div className="flex items-center gap-6">
               <div className="flex flex-col">
-                <span className="text-green-400 text-sm font-semibold">+ $2,550.00</span>
+                <span className="text-green-400 text-sm font-semibold">
+                  + ${totalIngresos.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
                 <span className="text-xs text-white/50">Ingresos</span>
               </div>
               <div className="flex flex-col">
@@ -79,7 +99,7 @@ export const Finance = () => {
                 <circle
                   cx="40"
                   cy="40"
-                  r="35"
+                  r={circleRadius}
                   strokeWidth="6"
                   stroke="#1f2937"
                   fill="transparent"
@@ -87,24 +107,27 @@ export const Finance = () => {
                 <circle
                   cx="40"
                   cy="40"
-                  r="35"
+                  r={circleRadius}
                   strokeWidth="6"
                   stroke="#8b5cf6"
                   fill="transparent"
-                  strokeDasharray="219.911"
-                  strokeDashoffset="55"
+                  strokeDasharray={circleCircumference}
+                  strokeDashoffset={progress}
                   strokeLinecap="round"
                 />
               </svg>
               <span className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold">75%</span>
+                <span className="text-lg font-bold">{Math.round(percentage)}%</span>
                 <span className="text-[10px] text-white/70">Completado</span>
               </span>
             </div>
             <div>
               <h3 className="text-sm font-bold mb-1">Meta Mensual</h3>
+              <p className="text-2xl text-green-400 font-bold mb-1">
+                ${goal.toLocaleString()}
+              </p>
               <p className="text-xs text-white/50 leading-snug mb-3">
-                Llevas un total<br />de 75% completado para<br />alcanzar tu meta mensual
+                Tu meta mensual actual.
               </p>
               <button
                 onClick={() => navigate('/dashboard/agregar-movimiento')}

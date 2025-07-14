@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "calendar": "^0.1.1",
     "lucide-react": "^0.523.0",
     "react": "^19.1.0",
+    "react-calendar": "^6.0.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
     "recharts": "^3.0.2"

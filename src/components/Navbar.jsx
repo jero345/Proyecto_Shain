@@ -7,13 +7,18 @@ export const Navbar = ({ setOpen }) => {
 
   // ✅ Cerrar sesión
   const handleLogout = () => {
-    localStorage.removeItem('user'); // o 'authToken' si lo usas
-    navigate('/'); // 🔑 Redirige al login
+    localStorage.removeItem('user');
+    navigate('/');
   };
 
   // ✅ Ir a perfil
   const goToProfile = () => {
     navigate('/dashboard/profile');
+  };
+
+  // ✅ Ir a notificaciones
+  const goToNotifications = () => {
+    navigate('/dashboard/notificaciones');
   };
 
   return (
@@ -40,12 +45,17 @@ export const Navbar = ({ setOpen }) => {
 
       {/* Acciones derecha */}
       <div className="flex items-center space-x-4">
-        <div className="relative">
+        {/* ✅ Bell clickable */}
+        <button
+          onClick={goToNotifications}
+          className="relative"
+          title="Notificaciones"
+        >
           <Bell className="w-5 h-5 text-gray-300" />
           <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-        </div>
+        </button>
 
-        {/* ✅ Avatar clickable para ir a perfil */}
+        {/* Avatar clickable para perfil */}
         <button
           onClick={goToProfile}
           className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center hover:ring-2 hover:ring-white/50 transition"

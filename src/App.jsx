@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 
 // Vistas
@@ -12,6 +12,8 @@ import { AddMovement } from '@views/AddMovement';
 import { ChatBot } from '@views/ChatBot';
 import { Settings } from '@views/Settings';
 import { Profile } from '@views/Profile';
+import { BookAppointment } from '@views/BookAppointment'; // ✅ Nueva vista
+import { RecoverPassword } from '@views/RecoverPassword';
 
 // Componentes
 import { Navigation } from '@components/Navigation';
@@ -38,11 +40,14 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rutas públicas */}
+        {/* ✅ Rutas públicas */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Rutas protegidas */}
+        {/* ✅ Redireccionar /dashboard a /dashboard/home */}
+        <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
+
+        {/* ✅ Rutas protegidas */}
         <Route
           path="/dashboard/home"
           element={
@@ -51,6 +56,7 @@ function App() {
             </ProtectedLayout>
           }
         />
+        <Route path="/recuperar" element={<RecoverPassword />} />
         <Route
           path="/dashboard/finanzas"
           element={
@@ -99,12 +105,21 @@ function App() {
             </ProtectedLayout>
           }
         />
-        {/* ✅ Nueva ruta: Perfil */}
         <Route
           path="/dashboard/profile"
           element={
             <ProtectedLayout open={open} setOpen={setOpen}>
               <Profile />
+            </ProtectedLayout>
+          }
+        />
+
+        {/* ✅ Nueva ruta: Agendar Cita */}
+        <Route
+          path="/dashboard/agendar-cita"
+          element={
+            <ProtectedLayout open={open} setOpen={setOpen}>
+              <BookAppointment />
             </ProtectedLayout>
           }
         />

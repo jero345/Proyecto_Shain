@@ -7,6 +7,7 @@ import {
   Bell,
   Settings,
   X,
+  CalendarClock, // 👈 Nuevo icono para agendar citas
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '@assets/logo.png';
@@ -18,6 +19,7 @@ const navItems = [
   { icon: <MessageCircle size={20} />, label: 'ChatBot', to: '/dashboard/chatbot' },
   { icon: <FileText size={20} />, label: 'Historial', to: '/dashboard/historial' },
   { icon: <Bell size={20} />, label: 'Notificaciones', to: '/dashboard/notificaciones' },
+  { icon: <CalendarClock size={20} />, label: 'Agendar Citas', to: '/dashboard/agendar-cita' }, // ✅ Nueva opción
   { icon: <Settings size={20} />, label: 'Configuraciones', to: '/dashboard/configuraciones' },
 ];
 
