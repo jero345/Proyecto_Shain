@@ -1,9 +1,21 @@
+// Libs
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 
-// Vistas
+// Context
+import AuthProvider from '@context/AuthProvider';
+import { PrivateRoute } from '@routes/PrivateRoute';
+
+// Layout components
+import { Navigation } from '@components/Navigation';
+import { Navbar } from '@components/Navbar';
+
+// Public views
 import { Login } from '@views/Login';
 import { Signup } from '@views/Signup';
+import { RecoverPassword } from '@views/RecoverPassword';
+
+// Protected views
 import { Home } from '@views/Home';
 import { Finance } from '@views/Finance';
 import { History } from '@views/History';
@@ -12,14 +24,10 @@ import { AddMovement } from '@views/AddMovement';
 import { ChatBot } from '@views/ChatBot';
 import { Settings } from '@views/Settings';
 import { Profile } from '@views/Profile';
-import { BookAppointment } from '@views/BookAppointment'; // ✅ Nueva vista
-import { RecoverPassword } from '@views/RecoverPassword';
+import { BookAppointment } from '@views/BookAppointment';
+import { PortalAdmin } from '@admin/PortalAdmin';
 
-// Componentes
-import { Navigation } from '@components/Navigation';
-import { Navbar } from '@components/Navbar';
-
-// Layout protegido con navegación y barra superior
+// Layout wrapper for dashboard
 function ProtectedLayout({ children, open, setOpen }) {
   return (
     <>
@@ -34,97 +42,134 @@ function ProtectedLayout({ children, open, setOpen }) {
   );
 }
 
+// App main
 function App() {
   const [open, setOpen] = useState(false);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* ✅ Rutas públicas */}
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/recuperar" element={<RecoverPassword />} />
+          <Route path="/portal-admin" element={<PortalAdmin />} />
+          <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
 
-        {/* ✅ Redireccionar /dashboard a /dashboard/home */}
-        <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
 
-        {/* ✅ Rutas protegidas */}
-        <Route
-          path="/dashboard/home"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <Home />
-            </ProtectedLayout>
-          }
-        />
-        <Route path="/recuperar" element={<RecoverPassword />} />
-        <Route
-          path="/dashboard/finanzas"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <Finance />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/historial"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <History />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/notificaciones"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <Notifications />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/agregar-movimiento"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <AddMovement />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/chatbot"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <ChatBot />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/configuraciones"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <Settings />
-            </ProtectedLayout>
-          }
-        />
-        <Route
-          path="/dashboard/profile"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <Profile />
-            </ProtectedLayout>
-          }
-        />
+          {/* Protected routes */}
+          <Route
+            path="/dashboard/home"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <Home />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
 
-        {/* ✅ Nueva ruta: Agendar Cita */}
-        <Route
-          path="/dashboard/agendar-cita"
-          element={
-            <ProtectedLayout open={open} setOpen={setOpen}>
-              <BookAppointment />
-            </ProtectedLayout>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+          <Route
+            path="/dashboard/finanzas"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <Finance />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/historial"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <History />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/notificaciones"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <Notifications />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/agregar-movimiento"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <AddMovement />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/chatbot"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <ChatBot />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/configuraciones"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <Settings />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/profile"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <Profile />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+            <Route
+            path="/dashboard/portal-admin"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <Profile />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/agendar-cita"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <BookAppointment />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

@@ -11,10 +11,16 @@ export default defineConfig({
   resolve: {
     alias: {
       '@data': path.resolve(__dirname, 'src/data'),
-      '@views': path.resolve(__dirname, './src/views'),
-      '@assets': path.resolve(__dirname, './src/assets'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@utils': path.resolve(__dirname, './src/utils'),
+      '@views': path.resolve(__dirname, 'src/views'),
+      '@assets': path.resolve(__dirname, 'src/assets'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@utils': path.resolve(__dirname, 'src/utils'),
+      '@services': path.resolve(__dirname, 'src/services'),
+      '@auth': path.resolve(__dirname, 'src/Auth'),
+      '@routes': path.resolve(__dirname, 'src/routes'),
+      '@context': path.resolve(__dirname, 'src/context'),
+      '@admin': path.resolve(__dirname, 'src/admin'),
+
     },
   },
   server: {

@@ -1,53 +1,42 @@
 import { useState, useEffect } from 'react';
 import { Pencil, Save, X } from 'lucide-react';
+import { getUserByIdService, updateUserService } from '@services/authService';
 
 export const Profile = () => {
-  // Estado persistente
-  const [user, setUser] = useState({
-    name: '',
-    email: '',
-    role: 'Administrador',
-    joined: '24 Abr 2025',
-  });
-
+  const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-  });
+  const [editForm, setEditForm] = useState({ name: '', email: '' });
 
-  // ✅ Cargar desde localStorage
+  const userId = JSON.parse(localStorage.getItem('user'))?.id;
+
   useEffect(() => {
-    const savedUser = JSON.parse(localStorage.getItem('userProfile')) || {
-      name: 'Sebastián Pérez',
-      email: 'sebastian@example.com',
-      role: 'Administrador',
-      joined: '24 Abr 2025',
-    };
-    setUser(savedUser);
-    setEditForm({
-      name: savedUser.name,
-      email: savedUser.email,
-    });
-  }, []);
+    if (userId) {
+      getUserByIdService(userId).then((data) => {
+        setUser(data);
+        setEditForm({ name: data.name, email: data.email });
+      });
+    }
+  }, [userId]);
 
-  // ✅ Cambios inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Guardar
-  const handleSave = () => {
-    const updatedUser = {
-      ...user,
-      name: editForm.name,
-      email: editForm.email,
-    };
-    setUser(updatedUser);
-    localStorage.setItem('userProfile', JSON.stringify(updatedUser));
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      const updated = await updateUserService(userId, {
+        name: editForm.name,
+        email: editForm.email,
+      });
+      setUser(updated);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error actualizando usuario', err);
+    }
   };
+
+  if (!user) return <p className="text-white p-6">Cargando perfil...</p>;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-10 text-white">
@@ -57,7 +46,6 @@ export const Profile = () => {
       </p>
 
       <div className="bg-gradient-to-br from-gradientStart via-gradientMid2 to-gradientEnd p-8 rounded-xl border border-white/10 backdrop-blur-md space-y-8">
-        {/* Avatar y nombre */}
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-4xl font-bold">
             {user.name.charAt(0)}
@@ -68,7 +56,6 @@ export const Profile = () => {
           </div>
         </div>
 
-        {/* Datos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm mb-1">Nombre completo</label>
@@ -107,11 +94,12 @@ export const Profile = () => {
 
           <div>
             <label className="block text-sm mb-1">Fecha de registro</label>
-            <p className="bg-white/10 px-4 py-2 rounded-md">{user.joined}</p>
+            <p className="bg-white/10 px-4 py-2 rounded-md">
+              {new Date(user.createdAt).toLocaleDateString('es-CO')}
+            </p>
           </div>
         </div>
 
-        {/* Botones */}
         {isEditing ? (
           <div className="flex gap-4">
             <button
