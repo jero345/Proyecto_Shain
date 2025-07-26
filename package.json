@@ -11,14 +11,17 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
+    "@hookform/resolvers": "^5.1.1",
     "axios": "^1.10.0",
     "calendar": "^0.1.1",
     "lucide-react": "^0.523.0",
     "react": "^19.1.0",
     "react-calendar": "^6.0.0",
     "react-dom": "^19.1.0",
+    "react-hook-form": "^7.61.1",
     "react-router-dom": "^7.6.2",
-    "recharts": "^3.0.2"
+    "recharts": "^3.0.2",
+    "zod": "^4.0.10"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

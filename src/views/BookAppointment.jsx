@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
+import { getAvailableTimeslots, bookAppointmentService } from '@services/appointmentsService';
 
 export const BookAppointment = () => {
   const [date, setDate] = useState(new Date());
@@ -7,51 +8,82 @@ export const BookAppointment = () => {
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
   const [appointments, setAppointments] = useState([]);
+  const [availableTimes, setAvailableTimes] = useState([]);
 
-  const timeslots = [
-    '08:30 - 09:30 AM',
-    '09:30 - 10:30 AM',
-    '10:30 - 11:30 AM',
-    '11:30 - 12:30 PM',
-    '12:30 - 01:30 PM',
-    '01:00 - 05:00 PM',
-    '05:00 - 06:00 PM',
-    '06:00 - 07:00 PM',
+  const allTimeslots = [
+    '09:00',
+    '10:00',
+    '11:00',
+    '12:00',
+    '01:00',
+    '02:00',
+    '03:00',
+    '04:00', 
+    '05:00', 
+    '06:00',
+    '07:00',  
+    '08:00',
   ];
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const fetchTimes = async () => {
+      try {
+        const formattedDate = date.toISOString().split('T')[0];
+        const available = await getAvailableTimeslots(formattedDate);
+        setAvailableTimes(available);
+      } catch (error) {
+        console.error('❌ Error al cargar horarios disponibles:', error);
+        setAvailableTimes([]);
+      }
+    };
+
+    fetchTimes();
+  }, [date]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!clientName || !description || !selectedTime) {
-      alert('Completa todos los campos y selecciona un horario.');
+      alert('⚠️ Completa todos los campos y selecciona un horario.');
+      return;
+    }
+
+    if (!availableTimes.includes(selectedTime)) {
+      alert('⚠️ El horario seleccionado ya no está disponible.');
       return;
     }
 
     const newAppointment = {
-      date: date.toDateString(),
+      date: date.toISOString(),
       time: selectedTime,
       name: clientName,
       description,
     };
 
-    setAppointments([...appointments, newAppointment]);
+    try {
+      const saved = await bookAppointmentService(newAppointment);
 
-    alert('✅ Cita reservada correctamente');
-    setClientName('');
-    setDescription('');
-    setSelectedTime('');
-  };
+      setAppointments([
+        ...appointments,
+        {
+          ...saved,
+          date: new Date(saved.date).toDateString(),
+        },
+      ]);
 
-  // 🧠 Función para saber si un horario ya está ocupado en la fecha actual
-  const isTimeDisabled = (time) => {
-    return appointments.some(
-      (appt) => appt.date === date.toDateString() && appt.time === time
-    );
+      alert('✅ Cita reservada correctamente');
+      setClientName('');
+      setDescription('');
+      setSelectedTime('');
+    } catch (err) {
+      console.error('❌ Error al registrar cita:', err);
+      alert('Error al registrar la cita. Intenta más tarde.');
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#a32063] via-[#4b1d69] to-[#0b0b2f] px-4 py-12 text-white">
       <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-10 mb-10">
-        {/* 📅 Calendario + horarios */}
         <div className="w-full lg:w-1/2 text-center">
           <h1 className="text-2xl md:text-3xl font-bold mb-6">Agendar Cita</h1>
 
@@ -71,8 +103,8 @@ export const BookAppointment = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
-            {timeslots.map((time) => {
-              const isDisabled = isTimeDisabled(time);
+            {allTimeslots.map((time) => {
+              const isDisabled = !availableTimes.includes(time);
               return (
                 <button
                   key={time}
@@ -149,7 +181,6 @@ export const BookAppointment = () => {
         </div>
       </div>
 
-      {/* 📋 Detalle de citas registradas */}
       {appointments.length > 0 && (
         <div className="w-full max-w-4xl bg-white/10 p-6 rounded-lg mt-6 shadow">
           <h2 className="text-lg font-semibold mb-4 text-white">📋 Citas Registradas</h2>

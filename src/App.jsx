@@ -26,6 +26,7 @@ import { Settings } from '@views/Settings';
 import { Profile } from '@views/Profile';
 import { BookAppointment } from '@views/BookAppointment';
 import { PortalAdmin } from '@admin/PortalAdmin';
+import { ChangePassword } from '@views/ChangePassword'; // ✅ NUEVO
 
 // Layout wrapper for dashboard
 function ProtectedLayout({ children, open, setOpen }) {
@@ -56,7 +57,6 @@ function App() {
           <Route path="/recuperar" element={<RecoverPassword />} />
           <Route path="/portal-admin" element={<PortalAdmin />} />
           <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
-
 
           {/* Protected routes */}
           <Route
@@ -146,7 +146,19 @@ function App() {
               </PrivateRoute>
             }
           />
-            <Route
+
+          <Route
+            path="/dashboard/change-password"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <ChangePassword />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
             path="/dashboard/portal-admin"
             element={
               <PrivateRoute>
