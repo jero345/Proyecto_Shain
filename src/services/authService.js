@@ -3,26 +3,22 @@ import { axiosInstance } from '@services/axiosclient';
 export const loginRequest = async (credentials) => {
   try {
     const res = await axiosInstance.post('/auth/login', credentials, {
-      withCredentials: true, // ✅ importante para enviar/recibir cookies
+      withCredentials: true,
     });
 
-    console.log("📥 Respuesta del backend:");
-    console.log("✅ Status:", res.status);
-    console.log("✅ Headers:", res.headers);
-    console.log("✅ Datos:", res.data);
-
-    return res.data;
-  } catch (error) {
-    console.error("❌ Error al hacer login:");
-    if (error.response) {
-      // Error con respuesta del servidor
-      console.error("⛔ Status:", error.response.status);
-      console.error("⛔ Data:", error.response.data);
-    } else {
-      // Error sin respuesta (por ejemplo, red caída)
-      console.error("⛔ Error general:", error.message);
+    // backend debe enviar el token o ya setear cookie HttpOnly
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
     }
-    throw error;
+
+    return {
+      status: res.data.status,
+      data: res.data.data,
+      token: res.data.token || null,
+    };
+  } catch (error) {
+    if (error.response) throw error;
+    throw new Error('Error de conexión con el servidor');
   }
 };
 

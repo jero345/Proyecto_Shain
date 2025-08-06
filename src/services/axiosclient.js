@@ -1,6 +1,6 @@
 import axios from 'axios';
 
 export const axiosInstance = axios.create({
-  baseURL: 'https://5qz4wrdx-4000.use2.devtunnels.ms/api',
+  baseURL: 'https://shain.up.railway.app/api',
   withCredentials: true,
 });

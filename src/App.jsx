@@ -1,4 +1,3 @@
-// Libs
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -14,6 +13,7 @@ import { Navbar } from '@components/Navbar';
 import { Login } from '@views/Login';
 import { Signup } from '@views/Signup';
 import { RecoverPassword } from '@views/RecoverPassword';
+import { TrialExpired } from '@views/TrialExpired';
 
 // Protected views
 import { Home } from '@views/Home';
@@ -25,8 +25,15 @@ import { ChatBot } from '@views/ChatBot';
 import { Settings } from '@views/Settings';
 import { Profile } from '@views/Profile';
 import { BookAppointment } from '@views/BookAppointment';
-import { PortalAdmin } from '@admin/PortalAdmin';
-import { ChangePassword } from '@views/ChangePassword'; // ✅ NUEVO
+import { ChangePassword } from '@views/ChangePassword';
+import { AppointmentsList } from '@views/AppointmentsList';
+import { ReferralPanel } from '@views/ReferralPanel';
+import { AdminReferralPanel } from '@views/AdminReferralPanel';
+
+
+
+// Admin view
+import AdminPanel from '@admin/AdminPanel';
 
 // Layout wrapper for dashboard
 function ProtectedLayout({ children, open, setOpen }) {
@@ -48,15 +55,16 @@ function App() {
   const [open, setOpen] = useState(false);
 
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/recuperar" element={<RecoverPassword />} />
-          <Route path="/portal-admin" element={<PortalAdmin />} />
+          <Route path="/recuperar-contraseña" element={<RecoverPassword />} />
+          <Route path="/trial-expired" element={<TrialExpired />} />
           <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
+          <Route path="/admin/referrals" element={<AdminReferralPanel />} />
 
           {/* Protected routes */}
           <Route
@@ -69,7 +77,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/finanzas"
             element={
@@ -80,7 +87,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/historial"
             element={
@@ -91,7 +97,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/notificaciones"
             element={
@@ -102,7 +107,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/agregar-movimiento"
             element={
@@ -113,7 +117,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/chatbot"
             element={
@@ -124,7 +127,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/configuraciones"
             element={
@@ -135,7 +137,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/profile"
             element={
@@ -146,9 +147,8 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
-            path="/dashboard/change-password"
+            path="/dashboard/recuperar-contrasena"
             element={
               <PrivateRoute>
                 <ProtectedLayout open={open} setOpen={setOpen}>
@@ -157,18 +157,16 @@ function App() {
               </PrivateRoute>
             }
           />
-
           <Route
-            path="/dashboard/portal-admin"
+            path="/dashboard/citas"
             element={
               <PrivateRoute>
                 <ProtectedLayout open={open} setOpen={setOpen}>
-                  <Profile />
+                  <AppointmentsList />
                 </ProtectedLayout>
               </PrivateRoute>
             }
           />
-
           <Route
             path="/dashboard/agendar-cita"
             element={
@@ -179,9 +177,31 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          {/* NUEVO: Panel de referidos */}
+          <Route
+            path="/dashboard/referidos"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout open={open} setOpen={setOpen}>
+                  <ReferralPanel />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Panel de administración */}
+          <Route
+            path="/portal-admin"
+            element={
+              <PrivateRoute>
+                <AdminPanel />
+              </PrivateRoute>
+            }
+          />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

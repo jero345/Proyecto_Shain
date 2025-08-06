@@ -1,31 +1,52 @@
-import { useState, useEffect } from 'react';
-import logo from '@assets/logo.png';
+import { useState, useEffect } from "react";
+import logo from "@assets/logo.png";
+import { getBusinessByUser, updateBusiness } from "@services/businessService";
 
 export const Settings = () => {
   const [business, setBusiness] = useState({
-    name: '',
-    goal: '',
-    type: '',
+    id: "",
+    name: "",
+    goal: "",
+    type: "",
   });
 
+  const userId = "123"; // ⚡ reemplaza con el userId real (puedes sacarlo de contexto de auth)
+
   useEffect(() => {
-    const savedBusiness = JSON.parse(localStorage.getItem('business')) || {
-      name: 'Tienda de ropa SK8',
-      goal: '5000',
-      type: 'Tienda Ropa',
+    const fetchBusiness = async () => {
+      try {
+        const data = await getBusinessByUser(userId);
+        setBusiness({
+          id: data.id,
+          name: data.name,
+          goal: data.goal,
+          type: data.type,
+        });
+        localStorage.setItem("business", JSON.stringify(data)); // opcional: guardar cache
+      } catch (error) {
+        console.error("Error cargando negocio:", error);
+      }
     };
-    setBusiness(savedBusiness);
-  }, []);
+
+    fetchBusiness();
+  }, [userId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setBusiness((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveGoal = () => {
-    const updatedBusiness = { ...business, goal: business.goal.replace('$', '').replace(',', '') };
-    localStorage.setItem('business', JSON.stringify(updatedBusiness));
-    alert('✅ Meta mensual actualizada correctamente');
+  const handleSaveGoal = async () => {
+    try {
+      const updatedBusiness = { goal: business.goal };
+      const response = await updateBusiness(business.id, updatedBusiness);
+      setBusiness((prev) => ({ ...prev, goal: response.goal }));
+
+      localStorage.setItem("business", JSON.stringify(response)); // actualizar cache
+      alert("✅ Meta mensual actualizada correctamente");
+    } catch (error) {
+      alert("❌ Error al actualizar la meta mensual");
+    }
   };
 
   return (
