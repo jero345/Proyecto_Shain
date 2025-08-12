@@ -1,208 +1,258 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
+// src/App.jsx
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useState } from "react";
 
-// Context
-import AuthProvider from '@context/AuthProvider';
-import { PrivateRoute } from '@routes/PrivateRoute';
+import { PrivateRoute } from "@routes/PrivateRoute";
+import { RoleRoute } from "@routes/RoleRoute";
 
-// Layout components
-import { Navigation } from '@components/Navigation';
-import { Navbar } from '@components/Navbar';
+import { Navigation } from "@components/Navigation";
+import { Navbar } from "@components/Navbar";
 
-// Public views
-import { Login } from '@views/Login';
-import { Signup } from '@views/Signup';
-import { RecoverPassword } from '@views/RecoverPassword';
-import { TrialExpired } from '@views/TrialExpired';
+// Public
+import { Login } from "@views/Login";
+import { Signup } from "@views/Signup";
+import { RecoverPassword } from "@views/RecoverPassword";
+import { TrialExpired } from "@views/TrialExpired";
+import { NotAuthorized } from "@views/NotAuthorized";
 
 // Protected views
-import { Home } from '@views/Home';
-import { Finance } from '@views/Finance';
-import { History } from '@views/History';
-import { Notifications } from '@views/Notifications';
-import { AddMovement } from '@views/AddMovement';
-import { ChatBot } from '@views/ChatBot';
-import { Settings } from '@views/Settings';
-import { Profile } from '@views/Profile';
-import { BookAppointment } from '@views/BookAppointment';
-import { ChangePassword } from '@views/ChangePassword';
-import { AppointmentsList } from '@views/AppointmentsList';
-import { ReferralPanel } from '@views/ReferralPanel';
-import { AdminReferralPanel } from '@views/AdminReferralPanel';
+import { Home } from "@views/Home";
+import { Finance } from "@views/Finance";
+import { History } from "@views/History";
+import { Notifications } from "@views/Notifications";
+import { AddMovement } from "@views/AddMovement";
+import { ChatBot } from "@views/ChatBot";
+import { Settings } from "@views/Settings";
+import { Profile } from "@views/Profile";
+import { BookAppointment } from "@views/BookAppointment";
+import { ChangePassword } from "@views/ChangePassword";
+import { AppointmentsList } from "@views/AppointmentsList";
+import { ReferralPanel } from "@views/ReferralPanel";
+import { AdminReferralPanel } from "@views/AdminReferralPanel";
+import AdminPanel from "@admin/AdminPanel";
+import { CreateTimeslots } from "@views/CreateTimeslots";
 
+import { useAuth } from "@auth/useAuth";
 
+const ROLES = {
+  ADMIN: "admin",
+  OWNER: "propietario_negocio",
+  BARBERO: "barbero",
+};
 
-// Admin view
-import AdminPanel from '@admin/AdminPanel';
+/** Bloquea rutas públicas si ya hay sesión (redirige según rol) */
+const PublicOnlyRoute = () => {
+  const { user } = useAuth();
+  if (!user) return <Outlet />;
+  return user.role === ROLES.ADMIN
+    ? <Navigate to="/portal-admin" replace />
+    : <Navigate to="/dashboard/home" replace />;
+};
 
-// Layout wrapper for dashboard
-function ProtectedLayout({ children, open, setOpen }) {
+/** Shell del dashboard para no repetir ProtectedLayout */
+function DashboardShell({ open, setOpen }) {
   return (
     <>
       <Navbar setOpen={setOpen} />
       <div className="flex">
         <Navigation open={open} setOpen={setOpen} />
         <main className="ml-0 lg:ml-60 min-h-screen w-full bg-gray-50 dark:bg-gray-900 p-4 pt-16 overflow-x-hidden">
-          {children}
+          <Outlet />
         </main>
       </div>
     </>
   );
 }
 
-// App main
-function App() {
+export default function App() {
   const [open, setOpen] = useState(false);
 
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* Public routes */}
+      <Routes>
+        {/* ===== Rutas públicas (bloqueadas si hay sesión) ===== */}
+        <Route element={<PublicOnlyRoute />}>
           <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/recuperar-contraseña" element={<RecoverPassword />} />
-          <Route path="/trial-expired" element={<TrialExpired />} />
-          <Route path="/dashboard" element={<Navigate to="/dashboard/home" replace />} />
-          <Route path="/admin/referrals" element={<AdminReferralPanel />} />
+        </Route>
 
-          {/* Protected routes */}
-          <Route
-            path="/dashboard/home"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <Home />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/finanzas"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <Finance />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/historial"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <History />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/notificaciones"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <Notifications />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/agregar-movimiento"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <AddMovement />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/chatbot"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <ChatBot />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/configuraciones"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <Settings />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/profile"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <Profile />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/recuperar-contrasena"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <ChangePassword />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/citas"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <AppointmentsList />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/dashboard/agendar-cita"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <BookAppointment />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+        {/* Disponible públicamente */}
+        <Route path="/trial-expired" element={<TrialExpired />} />
+        <Route path="/no-autorizado" element={<NotAuthorized />} />
 
-          {/* NUEVO: Panel de referidos */}
-          <Route
-            path="/dashboard/referidos"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout open={open} setOpen={setOpen}>
-                  <ReferralPanel />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-
-          {/* Panel de administración */}
-          <Route
-            path="/portal-admin"
-            element={
-              <PrivateRoute>
+        {/* ===== Portal Admin (solo admin) ===== */}
+        <Route
+          path="/portal-admin"
+          element={
+            <PrivateRoute>
+              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
                 <AdminPanel />
-              </PrivateRoute>
+              </RoleRoute>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Admin: referidos fuera del dashboard */}
+        <Route
+          path="/admin/referrals"
+          element={
+            <PrivateRoute>
+              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+                <AdminReferralPanel />
+              </RoleRoute>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Admin: crear horarios (timeslots) */}
+        <Route
+          path="/admin/timeslots"
+          element={
+            <PrivateRoute>
+              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+                <CreateTimeslots />
+              </RoleRoute>
+            </PrivateRoute>
+          }
+        />
+
+        {/* ===== Dashboard (layout único + hijos) ===== */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+                <DashboardShell open={open} setOpen={setOpen} />
+              </RoleRoute>
+            </PrivateRoute>
+          }
+        >
+          {/* Admin que entra a /dashboard -> redirige a portal-admin */}
+          <Route
+            index
+            element={
+              <RoleRoute roles={[ROLES.ADMIN]}>
+                <Navigate to="/portal-admin" replace />
+              </RoleRoute>
             }
           />
-        </Routes>
-      </AuthProvider>
+
+          {/* Home por defecto para barbero/owner */}
+          <Route
+            path="home"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+                <Home />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="finanzas"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+                <Finance />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="agregar-movimiento"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+                <AddMovement />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="chatbot"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+                <ChatBot />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="historial"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+                <History />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="notificaciones"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+                <Notifications />
+              </RoleRoute>
+            }
+          />
+
+          {/* Citas SOLO barbero */}
+          <Route
+            path="agendar-cita"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO]}>
+                <BookAppointment />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="citas"
+            element={
+              <RoleRoute roles={[ROLES.BARBERO]}>
+                <AppointmentsList />
+              </RoleRoute>
+            }
+          />
+
+          {/* Config/Perfil todos los roles */}
+          <Route
+            path="configuraciones"
+            element={
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+                <Settings />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+                <Profile />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="change-password"
+            element={
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+                <ChangePassword />
+              </RoleRoute>
+            }
+          />
+
+          {/* Referidos DENTRO del dashboard (solo admin) */}
+          <Route
+            path="referidos"
+            element={
+              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+                <ReferralPanel />
+              </RoleRoute>
+            }
+          />
+        </Route>
+
+        {/* Redirecciones cortas */}
+        <Route path="/dashboard/*" element={<Navigate to="/dashboard/home" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 }
-
-export default App;

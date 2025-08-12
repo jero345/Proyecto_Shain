@@ -1,18 +1,25 @@
+// src/views/RecoverPassword.jsx
 import { useState } from 'react';
+import { forgotPasswordService } from '@services/authService';
 
 export const RecoverPassword = () => {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email) {
       alert('Por favor ingresa tu correo electrónico.');
       return;
     }
-    // Aquí va tu lógica para enviar el correo de recuperación.
-    console.log('📧 Enviando link de recuperación a:', email);
-    setSent(true);
+
+    try {
+      await forgotPasswordService(email); // 👈 llamada al backend
+      setSent(true);
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al enviar el correo de recuperación.');
+    }
   };
 
   return (

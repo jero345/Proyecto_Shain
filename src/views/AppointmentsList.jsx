@@ -1,3 +1,4 @@
+// src/views/AppointmentsList.jsx
 import { useState, useEffect } from 'react';
 import { getAllAppointmentsService } from '@services/appointmentsService';
 
@@ -56,14 +57,18 @@ export const AppointmentsList = () => {
               </tr>
             </thead>
             <tbody>
-              {appointments.map((appt) => (
-                <tr key={appt._id} className="border-b border-white/10 hover:bg-white/10">
-                  <td className="px-6 py-4">{new Date(appt.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">{appt.timeSlot?.hour || '—'}</td>
-                  <td className="px-6 py-4">{appt.customerName}</td>
-                  <td className="px-6 py-4">{appt.description}</td>
-                </tr>
-              ))}
+              {[...appointments]
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .map((appt) => (
+                  <tr key={appt.id} className="border-b border-white/10 hover:bg-white/10">
+                    <td className="px-6 py-4">
+                      {appt.date ? new Date(appt.date).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-6 py-4">{appt.hour ?? '—'}</td>
+                    <td className="px-6 py-4">{appt.customerName || '—'}</td>
+                    <td className="px-6 py-4">{appt.description || '—'}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

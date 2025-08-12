@@ -49,3 +49,17 @@ export const changePasswordService = async (userId, data) => {
   });
   return res.data;
 };
+
+export const forgotPasswordService = async (email) => {
+  try {
+    const res = await axiosInstance.post('/auth/forgot-password', { email }, {
+      withCredentials: true,
+    });
+
+    console.log('✅ Link de recuperación enviado:', res.data);
+    return res.data;
+  } catch (error) {
+    console.error('❌ Error al enviar email de recuperación:', error);
+    throw error;
+  }
+};

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@auth/useAuth";
 import {
   getAllUsersService,
   updateUserStatusService,
   updateUserService,
-} from '@services/adminPanelService';
+} from "@services/adminPanelService";
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -11,13 +13,17 @@ const AdminPanel = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Modal
+  // Modal edición
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', role: '' });
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "" });
+
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const fetchUsers = async () => {
@@ -27,7 +33,7 @@ const AdminPanel = () => {
       setUsers(data);
       setTotalPages(totalPages);
     } catch (err) {
-      console.error('❌ Error al traer usuarios:', err);
+      console.error("❌ Error al traer usuarios:", err);
     } finally {
       setLoading(false);
     }
@@ -36,14 +42,10 @@ const AdminPanel = () => {
   const handleStatusChange = async (id, status) => {
     try {
       await updateUserStatusService(id, status);
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === id ? { ...user, status } : user
-        )
-      );
-      alert('✅ Estado actualizado correctamente');
+      setUsers(prev => prev.map(u => (u.id === id ? { ...u, status } : u)));
+      alert("✅ Estado actualizado correctamente");
     } catch {
-      alert('❌ Error al actualizar estado');
+      alert("❌ Error al actualizar estado");
     }
   };
 
@@ -55,27 +57,48 @@ const AdminPanel = () => {
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditForm((prev) => ({ ...prev, [name]: value }));
+    setEditForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleEditSubmit = async () => {
     try {
       await updateUserService(selectedUser.id, editForm);
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === selectedUser.id ? { ...user, ...editForm } : user
-        )
+      setUsers(prev =>
+        prev.map(u => (u.id === selectedUser.id ? { ...u, ...editForm } : u))
       );
       setIsModalOpen(false);
-      alert('✅ Usuario actualizado');
+      alert("✅ Usuario actualizado");
     } catch {
-      alert('❌ Error al actualizar usuario');
+      alert("❌ Error al actualizar usuario");
     }
   };
 
   return (
     <div className="p-6 min-h-screen bg-gray-900 text-white">
-      <h1 className="text-3xl font-bold mb-6">Panel de Administración</h1>
+      {/* Header + acciones */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-3xl font-bold">Panel de Administración</h1>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => navigate("/admin/referrals")}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm"
+          >
+            Ver Referidos
+          </button>
+          <button
+            onClick={() => navigate("/admin/timeslots")}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-md text-sm"
+          >
+            Crear horarios
+          </button>
+          <button
+            onClick={logout}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <p className="text-center">Cargando usuarios...</p>
@@ -104,9 +127,7 @@ const AdminPanel = () => {
                       <td className="px-6 py-3">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            u.status === 'active'
-                              ? 'bg-green-600'
-                              : 'bg-red-600'
+                            u.status === "active" ? "bg-green-600" : "bg-red-600"
                           }`}
                         >
                           {u.status}
@@ -117,12 +138,12 @@ const AdminPanel = () => {
                           onClick={() =>
                             handleStatusChange(
                               u.id,
-                              u.status === 'active' ? 'inactive' : 'active'
+                              u.status === "active" ? "inactive" : "active"
                             )
                           }
                           className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded-md"
                         >
-                          {u.status === 'active' ? 'Desactivar' : 'Activar'}
+                          {u.status === "active" ? "Desactivar" : "Activar"}
                         </button>
                         <button
                           onClick={() => handleEditClick(u)}
@@ -169,7 +190,7 @@ const AdminPanel = () => {
 
       {/* Modal de edición */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/70">
           <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Editar Usuario</h2>
             <div className="space-y-4">

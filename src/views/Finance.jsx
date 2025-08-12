@@ -1,19 +1,31 @@
+// src/views/Finance.jsx
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, BarChart } from 'lucide-react';
 import { Chart } from '@components/Chart';
 import { MiniCardChart } from '@components/MiniCardChart';
 import { getFinanceSummary, getLastMovements } from '@services/financeService';
+import { getBusinessByUser } from '@services/businessService';
+import { useAuth } from '@context/AuthContext';
 
 export const Finance = () => {
   const navigate = useNavigate();
+  const { user } = useAuth() || {};
+  const userId = user?.id || user?._id || user?.userId || '';
 
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [goal, setGoal] = useState(5000);
+  const [goal, setGoal] = useState(5000); // se actualizará con la meta del negocio
 
   const todayDate = new Date().toISOString().split('T')[0];
+
+  const parseGoal = (v) => {
+    // Convierte "100000" / "100.000" / "$100,000" -> número
+    if (v == null) return 0;
+    const n = Number(String(v).replace(/[^\d.]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
 
   // 🔧 Convertir movimientos para la gráfica
   const buildChartFromMovements = (movements) => {
@@ -31,6 +43,55 @@ export const Finance = () => {
     );
   };
 
+  // 1) Cargar meta mensual (goal) desde cache y/o API
+  useEffect(() => {
+    // a) cache local para pintar rápido
+    const cached = localStorage.getItem('business');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.goal != null) {
+          setGoal(parseGoal(parsed.goal));
+        }
+      } catch {}
+    }
+
+    // b) fetch real si tenemos userId
+    let ignore = false;
+    const loadGoal = async () => {
+      if (!userId) return;
+      try {
+        const business = await getBusinessByUser(userId);
+        if (ignore) return;
+        if (business?.goal != null) {
+          setGoal(parseGoal(business.goal));
+        }
+      } catch {
+        // silencioso: si falla, se queda con el cached o default
+      }
+    };
+    loadGoal();
+
+    // c) escuchar cambios desde otras pestañas
+    const onStorage = (e) => {
+      if (e.key === 'business' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.goal != null) {
+            setGoal(parseGoal(parsed.goal));
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      ignore = true;
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [userId]);
+
+  // 2) Resumen y movimientos
   useEffect(() => {
     const cachedSummary = localStorage.getItem('financeSummary');
     if (cachedSummary) {
@@ -58,7 +119,7 @@ export const Finance = () => {
     };
 
     fetchData();
-  }, []);
+  }, [todayDate]);
 
   if (loading) {
     return (
@@ -68,9 +129,11 @@ export const Finance = () => {
     );
   }
 
-  // 🔹 Cálculo de porcentaje de meta cumplida
-  const percentage =
-    goal > 0 ? Math.min((summary?.ingresos / goal) * 100, 100) : 0;
+  // 🔹 Cálculo de porcentaje de meta cumplida (seguro)
+  const ingresos = Number(summary?.ingresos) || 0;
+  const safeGoal = parseGoal(goal);
+  const percentage = safeGoal > 0 ? Math.min((ingresos / safeGoal) * 100, 100) : 0;
+
   const circleRadius = 40;
   const circleCircumference = 2 * Math.PI * circleRadius;
   const progress = circleCircumference - (percentage / 100) * circleCircumference;
@@ -95,7 +158,7 @@ export const Finance = () => {
             <div className="flex items-center gap-6">
               <div className="flex flex-col">
                 <span className="text-green-400 text-sm font-semibold">
-                  + ${summary?.ingresos?.toLocaleString() || 0}
+                  + ${ingresos.toLocaleString()}
                 </span>
                 <span className="text-xs text-white/50">Ingresos</span>
               </div>
@@ -140,7 +203,7 @@ export const Finance = () => {
             <div>
               <h3 className="text-sm font-bold mb-1">Meta Mensual</h3>
               <p className="text-2xl text-green-400 font-bold mb-1">
-                ${goal.toLocaleString()}
+                ${safeGoal.toLocaleString()}
               </p>
               <p className="text-xs text-white/50 leading-snug mb-3">
                 Llevas un total de {Math.round(percentage)}% completado
@@ -161,13 +224,13 @@ export const Finance = () => {
             <AlertTriangle size={18} /> <span className="font-semibold">Shain</span>
           </div>
           <p className="text-sm">
-            {summary?.egresos > summary?.ingresos
+            {summary?.egresos > ingresos
               ? 'Alerta: Los egresos están superando los ingresos.'
               : 'Todo en orden: los ingresos superan los egresos.'}
           </p>
           <p className="text-xs text-white/80 mt-1">Reporte del mes actual</p>
           <p className="text-xs text-white/60">
-            {summary?.egresos > summary?.ingresos
+            {summary?.egresos > ingresos
               ? 'Se recomienda generar nuevos ingresos'
               : 'Continúa con la estrategia actual'}
           </p>
@@ -188,21 +251,21 @@ export const Finance = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
         <MiniCardChart
           title="Ingresos Totales"
-          value={`$${summary?.ingresos?.toLocaleString() || 0}`}
+          value={`$${ingresos.toLocaleString()}`}
           percent={5}
           color="green"
           data={chartData.map((d) => ({ value: d.Ingresos }))}
         />
         <MiniCardChart
           title="Gastos Totales"
-          value={`-$${summary?.egresos?.toLocaleString() || 0}`}
+          value={`-$${(summary?.egresos || 0).toLocaleString()}`}
           percent={-15}
           color="red"
           data={chartData.map((d) => ({ value: d.Egresos }))}
         />
         <MiniCardChart
           title="Margen de beneficio"
-          value={`$${((summary?.ingresos || 0) - (summary?.egresos || 0)).toLocaleString()}`}
+          value={`$${(ingresos - (summary?.egresos || 0)).toLocaleString()}`}
           percent={21}
           color="blue"
           data={chartData.map((d) => ({ value: d.Ingresos - d.Egresos }))}

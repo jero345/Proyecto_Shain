@@ -13,6 +13,8 @@ import {
 } from '@services/addmovementService';
 import { Dialog } from '@headlessui/react';
 
+const getSafeId = (obj) => obj?.id ?? obj?._id;
+
 export const History = () => {
   const [movements, setMovements] = useState([]);
   const [filterType, setFilterType] = useState('todos');
@@ -29,9 +31,10 @@ export const History = () => {
     const fetchMovements = async () => {
       try {
         const data = await getMovementsService(filterType);
-        setMovements(data);
+        setMovements(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching movements', err);
+        setToast({ type: 'error', message: 'No se pudieron cargar los movimientos.' });
       }
     };
     fetchMovements();
@@ -39,18 +42,18 @@ export const History = () => {
 
   useEffect(() => {
     if (toast) {
-      const timeout = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timeout);
+      const t = setTimeout(() => setToast(null), 2500);
+      return () => clearTimeout(t);
     }
   }, [toast]);
 
   const filteredMovements = movements.filter((item) =>
-    item.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEditClick = (item) => {
     setSelectedMovement(item);
-    setEditForm({ value: String(item.value), description: item.description });
+    setEditForm({ value: String(item.value ?? ''), description: item.description || '' });
     setEditModalOpen(true);
   };
 
@@ -66,9 +69,9 @@ export const History = () => {
         value: String(editForm.value),
         description: editForm.description
       };
-      await updateMovementService(selectedMovement.id, updated);
+      await updateMovementService(getSafeId(selectedMovement), updated);
       setMovements((prev) =>
-        prev.map((m) => (m.id === selectedMovement.id ? updated : m))
+        prev.map((m) => (getSafeId(m) === getSafeId(selectedMovement) ? updated : m))
       );
       setEditModalOpen(false);
       setToast({ message: 'Movimiento actualizado.', type: 'success' });
@@ -78,16 +81,36 @@ export const History = () => {
     }
   };
 
+  // 🟢 Borrado optimista: cerramos modal y quitamos el ítem ANTES de esperar al backend
   const handleDeleteConfirm = async () => {
+    if (!selectedMovement) return;
+
+    const safeId = getSafeId(selectedMovement);
+
+    // Guarda snapshot para poder revertir si falla
+    const snapshot = movements;
+
+    // 1) Optimista: quitamos de la lista y cerramos modal YA
+    setMovements((prev) => prev.filter((m) => getSafeId(m) !== safeId));
+    setDeleteModalOpen(false);
+    setSelectedMovement(null);
+
+    // 2) Llamada real
     try {
-      await deleteMovementService(selectedMovement.id);
-      setMovements((prev) => prev.filter(m => m.id !== selectedMovement.id));
-      setDeleteModalOpen(false);
-      setSelectedMovement(null);
-      setToast({ message: 'Movimiento eliminado correctamente.', type: 'success' });
+      await deleteMovementService(safeId);
+      setToast({ type: 'success', message: 'Movimiento eliminado.' });
     } catch (err) {
       console.error('Error al eliminar', err);
-      setToast({ message: 'Hubo un error al eliminar el movimiento.', type: 'error' });
+
+      // Algunos backends devuelven 404 si ya estaba eliminado; lo tratamos como éxito
+      const status = err?.response?.status ?? err?.status;
+      if (status === 404) {
+        setToast({ type: 'success', message: 'Movimiento eliminado.' });
+      } else {
+        // Revertir cambios si falló de verdad
+        setMovements(snapshot);
+        setToast({ type: 'error', message: 'No se pudo eliminar el movimiento.' });
+      }
     }
   };
 
@@ -106,7 +129,7 @@ export const History = () => {
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {['todos', 'ingreso', 'egreso'].map((type) => (
           <button
             key={type}
@@ -126,6 +149,14 @@ export const History = () => {
             Ver {type.charAt(0).toUpperCase() + type.slice(1)}
           </button>
         ))}
+
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar por descripción…"
+          className="ml-auto px-4 py-2 rounded-md bg-white/10 border border-white/20 text-white text-sm"
+        />
       </div>
 
       <div className="bg-[#0b0f19] rounded-xl p-6">
@@ -134,47 +165,56 @@ export const History = () => {
           <p className="text-sm text-white/60">No se encontraron movimientos.</p>
         ) : (
           <ul className="space-y-4">
-            {filteredMovements.map((item) => (
-              <li
-                key={item.id}
-                className="flex justify-between items-center bg-[#0f172a] border border-white/5 rounded-2xl px-4 py-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      item.type === 'ingreso' ? 'bg-green-600' : 'bg-red-600'
-                    }`}
-                  >
-                    {item.type === 'ingreso' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+            {filteredMovements.map((item) => {
+              const itemId = getSafeId(item);
+              return (
+                <li
+                  key={itemId}
+                  className="flex justify-between items-center bg-[#0f172a] border border-white/5 rounded-2xl px-4 py-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        item.type === 'ingreso' ? 'bg-green-600' : 'bg-red-600'
+                      }`}
+                    >
+                      {item.type === 'ingreso' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold capitalize">{item.type}</p>
+                      <p className="text-xs text-white/50">{item.date}</p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold capitalize">{item.type}</p>
-                    <p className="text-xs text-white/50">{item.date}</p>
+
+                  <div className="text-right">
+                    <p className="text-sm font-bold">
+                      {item.type === 'egreso' ? '-' : '+'}${Number(item.value ?? 0).toLocaleString('es-CO')}
+                    </p>
+                    <p className="text-xs text-white/50">{item.description || '-'}</p>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold">${item.value}</p>
-                  <p className="text-xs text-white/50">{item.description}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEditClick(item)} className="hover:text-yellow-400">
-                    <Pencil size={16} />
-                  </button>
-                  <button onClick={() => handleDeleteClick(item)} className="hover:text-red-400">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </li>
-            ))}
+
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditClick(item)} className="hover:text-yellow-400" title="Editar">
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteClick(item)} className="hover:text-red-400" title="Eliminar">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
 
       {/* Modal Editar */}
-      <Dialog open={editModalOpen} onClose={() => setEditModalOpen(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#1c1c1e] p-6 rounded-xl w-full max-w-md text-white space-y-4">
-            <h2 className="text-lg font-semibold">Editar Movimiento</h2>
+      <Dialog open={editModalOpen} onClose={setEditModalOpen} className="relative z-50">
+        <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="bg-[#1c1c1e] p-6 rounded-xl w-full max-w-md text-white space-y-4 border border-white/10">
+            <Dialog.Title className="text-lg font-semibold">Editar Movimiento</Dialog.Title>
+
             <div>
               <label className="block text-sm font-medium">Valor</label>
               <input
@@ -193,35 +233,70 @@ export const History = () => {
                 className="w-full px-4 py-2 rounded-md bg-white/10 border border-white/20 text-white"
               />
             </div>
+
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setEditModalOpen(false)} className="text-white/70 hover:underline">Cancelar</button>
-              <button onClick={handleEditSubmit} className="bg-gradient-to-br from-gradientStart to-gradientEnd px-4 py-2 rounded-md font-semibold">Guardar</button>
+              <button onClick={() => setEditModalOpen(false)} className="text-white/70 hover:underline">
+                Cancelar
+              </button>
+              <button
+                onClick={handleEditSubmit}
+                className="bg-gradient-to-br from-gradientStart to-gradientEnd px-4 py-2 rounded-md font-semibold"
+              >
+                Guardar
+              </button>
             </div>
-          </div>
+          </Dialog.Panel>
         </div>
       </Dialog>
 
       {/* Modal Eliminar */}
-      <Dialog open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#1c1c1e] rounded-xl p-6 w-full max-w-md text-white space-y-4">
-            <h2 className="text-lg font-semibold">¿Eliminar movimiento?</h2>
-            <p className="text-sm text-white/60">Esta acción no se puede deshacer.</p>
+      <Dialog open={deleteModalOpen} onClose={setDeleteModalOpen} className="relative z-50">
+        <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="bg-[#1c1c1e] rounded-xl p-6 w-full max-w-md text-white space-y-4 border border-white/10">
+            <Dialog.Title className="text-lg font-semibold">¿Eliminar movimiento?</Dialog.Title>
+            <Dialog.Description className="text-sm text-white/60">
+              Esta acción no se puede deshacer.
+            </Dialog.Description>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteModalOpen(false)} className="text-white/70 hover:underline">Cancelar</button>
-              <button onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md">Eliminar</button>
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(false)}
+                className="text-white/70 hover:underline"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="px-4 py-1.5 rounded-md text-white bg-red-600 hover:bg-red-700"
+              >
+                Eliminar
+              </button>
             </div>
-          </div>
+          </Dialog.Panel>
         </div>
       </Dialog>
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 px-4 py-2 rounded-lg text-white shadow-md transition-all duration-300
-          ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-[9999] px-4 py-2 rounded-lg text-white shadow-lg
+            ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}
+            animate-[fadeIn_150ms_ease-out,fadeOut_300ms_ease-in_2200ms_forwards]`}
+        >
           {toast.message}
         </div>
       )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(8px); } }
+      `}</style>
     </div>
   );
 };
+
+export default History;
