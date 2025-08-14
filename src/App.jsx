@@ -2,16 +2,19 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useState } from "react";
 
+// Guards
 import { PrivateRoute } from "@routes/PrivateRoute";
 import { RoleRoute } from "@routes/RoleRoute";
 
+// Layout
 import { Navigation } from "@components/Navigation";
 import { Navbar } from "@components/Navbar";
 
-// Public
+// Public views
 import { Login } from "@views/Login";
 import { Signup } from "@views/Signup";
 import { RecoverPassword } from "@views/RecoverPassword";
+import ResetPassword from "@auth/ResetPassword"; // ← nueva vista para cambiar contraseña
 import { TrialExpired } from "@views/TrialExpired";
 import { NotAuthorized } from "@views/NotAuthorized";
 
@@ -40,16 +43,17 @@ const ROLES = {
   BARBERO: "barbero",
 };
 
-/** Bloquea rutas públicas si ya hay sesión (redirige según rol) */
+/** Rutas públicas que se bloquean si ya hay sesión */
 const PublicOnlyRoute = () => {
   const { user } = useAuth();
   if (!user) return <Outlet />;
+
   return user.role === ROLES.ADMIN
     ? <Navigate to="/portal-admin" replace />
     : <Navigate to="/dashboard/home" replace />;
 };
 
-/** Shell del dashboard para no repetir ProtectedLayout */
+/** Shell del dashboard para evitar repetir layout en rutas protegidas */
 function DashboardShell({ open, setOpen }) {
   return (
     <>
@@ -70,19 +74,20 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ===== Rutas públicas (bloqueadas si hay sesión) ===== */}
+        {/** ===================== PÚBLICAS (bloqueadas si hay sesión) ===================== */}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/recuperar-contraseña" element={<RecoverPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} /> {/* ← NUEVA */}
         </Route>
 
-        {/* Disponible públicamente */}
+        {/** ===================== PÚBLICAS SIEMPRE DISPONIBLES ===================== */}
         <Route path="/trial-expired" element={<TrialExpired />} />
         <Route path="/no-autorizado" element={<NotAuthorized />} />
 
-        {/* ===== Portal Admin (solo admin) ===== */}
+        {/** ===================== PORTAL ADMIN (SOLO ADMIN) ===================== */}
         <Route
           path="/portal-admin"
           element={
@@ -94,7 +99,7 @@ export default function App() {
           }
         />
 
-        {/* Admin: referidos fuera del dashboard */}
+        {/** Admin: referidos fuera del dashboard */}
         <Route
           path="/admin/referrals"
           element={
@@ -106,7 +111,7 @@ export default function App() {
           }
         />
 
-        {/* Admin: crear horarios (timeslots) */}
+        {/** Admin: crear horarios (timeslots) */}
         <Route
           path="/admin/timeslots"
           element={
@@ -118,7 +123,7 @@ export default function App() {
           }
         />
 
-        {/* ===== Dashboard (layout único + hijos) ===== */}
+        {/** ===================== DASHBOARD (PROTEGIDO + LAYOUT ÚNICO) ===================== */}
         <Route
           path="/dashboard"
           element={
@@ -129,7 +134,7 @@ export default function App() {
             </PrivateRoute>
           }
         >
-          {/* Admin que entra a /dashboard -> redirige a portal-admin */}
+          {/** Si un ADMIN entra a /dashboard, lo mandamos al portal de admin */}
           <Route
             index
             element={
@@ -139,7 +144,7 @@ export default function App() {
             }
           />
 
-          {/* Home por defecto para barbero/owner */}
+          {/** Home por defecto para barbero/owner */}
           <Route
             path="home"
             element={
@@ -194,7 +199,7 @@ export default function App() {
             }
           />
 
-          {/* Citas SOLO barbero */}
+          {/** Citas: solo barbero */}
           <Route
             path="agendar-cita"
             element={
@@ -212,7 +217,7 @@ export default function App() {
             }
           />
 
-          {/* Config/Perfil todos los roles */}
+          {/** Configuración / Perfil (todos los roles) */}
           <Route
             path="configuraciones"
             element={
@@ -238,7 +243,7 @@ export default function App() {
             }
           />
 
-          {/* Referidos DENTRO del dashboard (solo admin) */}
+          {/** Dentro del dashboard: referidos solo admin */}
           <Route
             path="referidos"
             element={
@@ -247,9 +252,12 @@ export default function App() {
               </RoleRoute>
             }
           />
+
+          {/** Fallback del dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
         </Route>
 
-        {/* Redirecciones cortas */}
+        {/** ===================== FALLBACK GLOBAL ===================== */}
         <Route path="/dashboard/*" element={<Navigate to="/dashboard/home" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
