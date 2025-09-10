@@ -1,15 +1,23 @@
+// src/admin/AdminPanel.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@auth/useAuth";
+
+// Services (tu archivo real ya normaliza { data, totalPages })
 import {
   getAllUsersService,
   updateUserStatusService,
   updateUserService,
 } from "@services/adminPanelService";
 
-const AdminPanel = () => {
+function AdminPanel() {
+  // -------------------------
+  // State
+  // -------------------------
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Paginación
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -21,17 +29,23 @@ const AdminPanel = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  // -------------------------
+  // Effects
+  // -------------------------
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
+  // -------------------------
+  // Data fetching
+  // -------------------------
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, totalPages } = await getAllUsersService(page, 10);
-      setUsers(data);
-      setTotalPages(totalPages);
+      const { data, totalPages: tp } = await getAllUsersService(page, 10);
+      setUsers(data || []);
+      setTotalPages(tp || 1);
     } catch (err) {
       console.error("❌ Error al traer usuarios:", err);
     } finally {
@@ -39,10 +53,13 @@ const AdminPanel = () => {
     }
   };
 
+  // -------------------------
+  // Handlers
+  // -------------------------
   const handleStatusChange = async (id, status) => {
     try {
       await updateUserStatusService(id, status);
-      setUsers(prev => prev.map(u => (u.id === id ? { ...u, status } : u)));
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, status } : u)));
       alert("✅ Estado actualizado correctamente");
     } catch {
       alert("❌ Error al actualizar estado");
@@ -51,20 +68,26 @@ const AdminPanel = () => {
 
   const handleEditClick = (user) => {
     setSelectedUser(user);
-    setEditForm({ name: user.name, email: user.email, role: user.role });
+    setEditForm({
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role || "",
+    });
     setIsModalOpen(true);
   };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditForm(prev => ({ ...prev, [name]: value }));
+    setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleEditSubmit = async () => {
     try {
       await updateUserService(selectedUser.id, editForm);
-      setUsers(prev =>
-        prev.map(u => (u.id === selectedUser.id ? { ...u, ...editForm } : u))
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === selectedUser.id ? { ...u, ...editForm } : u
+        )
       );
       setIsModalOpen(false);
       alert("✅ Usuario actualizado");
@@ -73,11 +96,15 @@ const AdminPanel = () => {
     }
   };
 
+  // -------------------------
+  // Render
+  // -------------------------
   return (
     <div className="p-6 min-h-screen bg-gray-900 text-white">
-      {/* Header + acciones */}
+      {/* Header + Acciones */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold">Panel de Administración</h1>
+
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => navigate("/admin/referrals")}
@@ -85,12 +112,14 @@ const AdminPanel = () => {
           >
             Ver Referidos
           </button>
+
           <button
             onClick={() => navigate("/admin/timeslots")}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-md text-sm"
           >
             Crear horarios
           </button>
+
           <button
             onClick={logout}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm"
@@ -100,6 +129,7 @@ const AdminPanel = () => {
         </div>
       </div>
 
+      {/* Tabla de usuarios */}
       {loading ? (
         <p className="text-center">Cargando usuarios...</p>
       ) : (
@@ -145,6 +175,7 @@ const AdminPanel = () => {
                         >
                           {u.status === "active" ? "Desactivar" : "Activar"}
                         </button>
+
                         <button
                           onClick={() => handleEditClick(u)}
                           className="px-3 py-1 text-sm bg-yellow-600 hover:bg-yellow-700 rounded-md"
@@ -156,7 +187,10 @@ const AdminPanel = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-gray-400">
+                    <td
+                      colSpan="6"
+                      className="px-6 py-4 text-center text-gray-400"
+                    >
                       No hay usuarios registrados.
                     </td>
                   </tr>
@@ -174,9 +208,11 @@ const AdminPanel = () => {
             >
               Anterior
             </button>
+
             <span className="px-3 py-1">
               Página {page} de {totalPages}
             </span>
+
             <button
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page === totalPages}
@@ -193,6 +229,7 @@ const AdminPanel = () => {
         <div className="fixed inset-0 flex items-center justify-center bg-black/70">
           <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Editar Usuario</h2>
+
             <div className="space-y-4">
               <input
                 type="text"
@@ -202,6 +239,7 @@ const AdminPanel = () => {
                 className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
                 placeholder="Nombre"
               />
+
               <input
                 type="email"
                 name="email"
@@ -210,6 +248,7 @@ const AdminPanel = () => {
                 className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
                 placeholder="Correo"
               />
+
               <select
                 name="role"
                 value={editForm.role}
@@ -220,6 +259,7 @@ const AdminPanel = () => {
                 <option value="admin">Administrador</option>
               </select>
             </div>
+
             <div className="flex justify-end mt-6 gap-3">
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -227,6 +267,7 @@ const AdminPanel = () => {
               >
                 Cancelar
               </button>
+
               <button
                 onClick={handleEditSubmit}
                 className="px-4 py-2 bg-green-600 rounded-md"
@@ -239,6 +280,6 @@ const AdminPanel = () => {
       )}
     </div>
   );
-};
+}
 
 export default AdminPanel;

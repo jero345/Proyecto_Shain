@@ -1,7 +1,7 @@
 // src/services/businessService.js
-import { axiosInstance } from '@services/axiosclient';
+import { axiosApi } from '@services/axiosclient';
 
-// Si tu axiosInstance.baseURL ya incluye /api, deja '/business'.
+// Si tu axiosApi.baseURL ya incluye /api, deja '/business'.
 // Si no, usa '/api/business'.
 const BASE = '/business';
 
@@ -10,7 +10,7 @@ const toStr = (v) => (v === null || v === undefined ? '' : String(v));
 
 /** GET business/{userId} */
 export const getBusinessByUser = async (userId) => {
-  const res = await axiosInstance.get(`${BASE}/${userId}`, { withCredentials: true });
+  const res = await axiosApi.get(`${BASE}/${userId}`, { withCredentials: true });
   const raw = pick(res);
   return {
     id: raw?._id ?? raw?.id ?? '',
@@ -34,7 +34,7 @@ export const saveBusinessFD = async (id, { name, goal, type, description, imageF
   fd.append('description', toStr(description));
   if (imageFile) fd.append('image', imageFile); // opcional
 
-  const res = await axiosInstance.patch(`${BASE}/${id}`, fd, {
+  const res = await axiosApi.patch(`${BASE}/${id}`, fd, {
     withCredentials: true,
     headers: { 'Content-Type': 'multipart/form-data' },
   });

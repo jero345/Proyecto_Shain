@@ -1,5 +1,5 @@
 // src/services/addMovementService.js
-import { axiosInstance } from "@services/axiosclient";
+import { axiosApi } from "@services/axiosclient";
 
 /**
  * Crear un movimiento
@@ -7,7 +7,7 @@ import { axiosInstance } from "@services/axiosclient";
  * @returns {Promise<any>} payload del backend (normalmente { data: {...} })
  */
 export const addMovementService = async (movement) => {
-  const res = await axiosInstance.post("/movements", movement, {
+  const res = await axiosApi.post("/movements", movement, {
     withCredentials: true,
   });
   return res.data;
@@ -20,7 +20,7 @@ export const addMovementService = async (movement) => {
  */
 export const getLastMovements = async (days = 30) => {
   try {
-    const { data } = await axiosInstance.get(`/movements/last?days=${days}`, {
+    const { data } = await axiosApi.get(`/movements/last?days=${days}`, {
       withCredentials: true,
     });
 
@@ -54,12 +54,12 @@ export const getLastMovements = async (days = 30) => {
 /** Extras opcionales por si los usas en otras vistas */
 export const getMovementsService = async (type = "") => {
   const url = type && type !== "todos" ? `/movements?type=${type}` : "/movements";
-  const res = await axiosInstance.get(url, { withCredentials: true });
+  const res = await axiosApi.get(url, { withCredentials: true });
   return res.data?.data ?? [];
 };
 
 export const updateMovementService = async (id, data) =>
-  axiosInstance.patch(`/movements/${id}`, data, { withCredentials: true });
+  axiosApi.patch(`/movements/${id}`, data, { withCredentials: true });
 
 export const deleteMovementService = async (id) =>
-  axiosInstance.delete(`/movements/${id}`, { withCredentials: true });
+  axiosApi.delete(`/movements/${id}`, { withCredentials: true });

@@ -1,24 +1,40 @@
-// src/views/RecoverPassword.jsx
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { forgotPasswordService } from '@services/authService';
 
 export const RecoverPassword = () => {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [serverMsg, setServerMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) {
-      alert('Por favor ingresa tu correo electrónico.');
+    setServerMsg('');
+    setErrorMsg('');
+
+    const clean = String(email || '').trim();
+    if (!clean) {
+      setErrorMsg('Ingresa tu correo.');
       return;
     }
 
     try {
-      await forgotPasswordService(email); // 👈 llamada al backend
+      setLoading(true);
+      const r = await forgotPasswordService(clean);
+      // Muestra mensaje del backend si viene
+      setServerMsg(r?.message || 'Hemos enviado un enlace a tu correo.');
       setSent(true);
-    } catch (error) {
-      console.error(error);
-      alert('Hubo un error al enviar el correo de recuperación.');
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'No se pudo enviar el enlace. Intenta de nuevo.';
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,9 +46,15 @@ export const RecoverPassword = () => {
           Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
         </p>
 
+        {errorMsg && (
+          <div className="mb-4 rounded border border-red-400/40 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
+            {errorMsg}
+          </div>
+        )}
+
         {sent ? (
-          <div className="text-center text-green-400 font-semibold">
-            ✅ Link enviado correctamente. Revisa tu correo.
+          <div className="rounded border border-green-400/40 bg-green-500/10 text-green-300 px-3 py-2 text-sm">
+            ✅ {serverMsg || 'Revisa tu correo (y la carpeta de spam).'}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -43,25 +65,31 @@ export const RecoverPassword = () => {
                 placeholder="tuemail@ejemplo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#a32063]"
+                className={`w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-2 ${
+                  errorMsg ? 'focus:ring-red-400' : 'focus:ring-[#a32063]'
+                }`}
+                autoComplete="email"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-[#a32063] to-[#4b1d69] hover:opacity-90 text-white font-semibold py-2 rounded-full transition"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-[#a32063] to-[#4b1d69] hover:opacity-90 text-white font-semibold py-2 rounded-full transition disabled:opacity-60"
             >
-              Enviar enlace de recuperación
+              {loading ? 'Enviando…' : 'Enviar enlace de recuperación'}
             </button>
           </form>
         )}
 
         <div className="text-center mt-6">
-          <a href="/" className="text-xs text-white/70 underline hover:text-white">
+          <Link to="/" className="text-xs text-white/70 underline hover:text-white">
             Volver al inicio de sesión
-          </a>
+          </Link>
         </div>
       </div>
     </div>
   );
 };
+
+export default RecoverPassword;

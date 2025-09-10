@@ -1,6 +1,6 @@
 // src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { axiosInstance } from "@services/axiosclient";
+import { axiosApi } from "@services/axiosclient";
 
 export const AuthContext = createContext(null);
 
@@ -29,7 +29,7 @@ export default function AuthProvider({ children }) {
     try {
       const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
-        axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        axiosApi.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       }
     } catch {}
   }, []);
@@ -40,7 +40,7 @@ export default function AuthProvider({ children }) {
     localStorage.setItem(USER_KEY, JSON.stringify(normalized));
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      axiosApi.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
   };
 
@@ -55,12 +55,12 @@ export default function AuthProvider({ children }) {
   const logout = async () => {
     try {
       // si tu backend invalida cookie/sesión:
-      await axiosInstance.post("/auth/logout", null, { withCredentials: true }).catch(() => {});
+      await axiosApi.post("/auth/logout", null, { withCredentials: true }).catch(() => {});
     } finally {
       setUser(null);
       localStorage.removeItem(USER_KEY);
       localStorage.removeItem(TOKEN_KEY);
-      delete axiosInstance.defaults.headers.common["Authorization"];
+      delete axiosApi.defaults.headers.common["Authorization"];
       // salida limpia (evita volver con botón atrás)
       window.location.replace("/");
     }

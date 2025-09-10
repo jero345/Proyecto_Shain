@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+// src/views/Signup.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { registerRequest } from '@services/authService';
 import logo from '@assets/logo.png';
 import bgImage from '@assets/fondo.png';
 
 export const Signup = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [form, setForm] = useState({
     name: '',
@@ -17,6 +19,7 @@ export const Signup = () => {
     password: '',
     confirmPassword: '',
     acceptedTerms: false,
+    referredByCode: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -25,15 +28,28 @@ export const Signup = () => {
 
   const setField = (name, value) => {
     setForm(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: undefined })); // limpia error de ese campo al escribir
-    setServerError(''); // limpia error general
+    setErrors(prev => ({ ...prev, [name]: undefined }));
+    setServerError('');
   };
 
-  // --- Validaciones de cliente ---
+  // Autocompletar código de referido desde query (?ref, ?referral, ?codigo, ?codigoReferido)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const ref =
+      params.get('ref') ||
+      params.get('referral') ||
+      params.get('codigo') ||
+      params.get('codigoReferido') ||
+      '';
+    if (ref) setField('referredByCode', ref.trim());
+  }, [location.search]);
+
+  // Validaciones básicas
   const validate = (values) => {
     const e = {};
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRe = /^[0-9+\s()-]{6,}$/;
+    const refRe = /^[A-Z0-9-]{4,16}$/i;
 
     if (!values.name.trim()) e.name = 'Nombre es obligatorio.';
     if (!values.lastName.trim()) e.lastName = 'Apellido es obligatorio.';
@@ -54,6 +70,10 @@ export const Signup = () => {
 
     if (!values.acceptedTerms) e.acceptedTerms = 'Debes aceptar los términos y condiciones.';
 
+    if (values.referredByCode && !refRe.test(values.referredByCode.trim())) {
+      e.referredByCode = 'Código inválido (4–16 caracteres alfanuméricos).';
+    }
+
     return e;
   };
 
@@ -70,9 +90,8 @@ export const Signup = () => {
     }
   };
 
-  // Mapear errores del backend (400) a mensajes claros
+  // Mapeo de errores del backend -> campos / mensaje general
   const handleServerError = (axiosError) => {
-    // axiosError?.response?.status, axiosError?.response?.data
     const res = axiosError?.response;
     if (!res) {
       setServerError(axiosError?.message || 'Ocurrió un error inesperado.');
@@ -80,44 +99,32 @@ export const Signup = () => {
     }
 
     const { status, data } = res;
-    // Intentar mensajes por campo
     const newFieldErrors = { ...errors };
+    const message = data?.message || data?.error || data?.msg;
 
-    // Algunos backends envían { message: "..."} o { error: "..."} o { errors: { email:"...", username:"..." } } o array
-    const message = data?.message || data?.error;
+    // Puede venir { errors: { campo: 'msg' } } o { errors: [{ field,msg }] }
+    if (data?.errors) {
+      if (Array.isArray(data.errors)) {
+        data.errors.forEach((it) => {
+          const field = it.field || it.param || it.path;
+          const msg = it.message || it.msg || it.error || 'Dato inválido.';
+          if (field) newFieldErrors[field] = msg;
+        });
+      } else if (typeof data.errors === 'object') {
+        Object.keys(data.errors).forEach((k) => { newFieldErrors[k] = data.errors[k]; });
+      }
+    }
 
     if (status === 400) {
-      // Si viene objeto de errores por campo
-      if (data?.errors && typeof data.errors === 'object') {
-        // puede ser objeto { email: 'ya existe', username: '...' } o array de objetos
-        if (!Array.isArray(data.errors)) {
-          for (const k of Object.keys(data.errors)) {
-            newFieldErrors[k] = data.errors[k];
-          }
-        } else {
-          data.errors.forEach((it) => {
-            // soporta formatos { field:'email', message:'...' } o { msg:'...', param:'email' }
-            const field = it.field || it.param;
-            const msg = it.message || it.msg || it.error || 'Dato inválido.';
-            if (field) newFieldErrors[field] = msg;
-          });
-        }
-      }
-
-      // Si el backend solo manda un mensaje genérico, intentamos inferir campo
-      if (message) {
+      if (message && Object.keys(newFieldErrors).length === 0) {
         const lower = String(message).toLowerCase();
-        if (lower.includes('correo') || lower.includes('email')) {
-          newFieldErrors.email = message;
-        } else if (lower.includes('usuario') || lower.includes('username')) {
-          newFieldErrors.username = message;
-        } else if (lower.includes('tel') || lower.includes('phone')) {
-          newFieldErrors.phone = message;
-        } else {
-          setServerError(message);
-        }
+        if (lower.includes('correo') || lower.includes('email')) newFieldErrors.email = message;
+        else if (lower.includes('usuario') || lower.includes('user')) newFieldErrors.username = message;
+        else if (lower.includes('tel') || lower.includes('phone') || lower.includes('telefono')) newFieldErrors.phone = message;
+        else if (lower.includes('contraseña') || lower.includes('password')) newFieldErrors.password = message;
+        else if (lower.includes('refer')) newFieldErrors.referredByCode = message;
+        else setServerError(message);
       }
-
       setErrors(prev => ({ ...prev, ...newFieldErrors }));
       if (!message && Object.keys(newFieldErrors).length === 0) {
         setServerError('Datos inválidos. Revisa los campos.');
@@ -125,15 +132,8 @@ export const Signup = () => {
       return;
     }
 
-    // Otros códigos
-    if (status === 409) {
-      setServerError(data?.message || 'Conflicto: datos ya existentes.');
-      return;
-    }
-    if (status >= 500) {
-      setServerError('Servidor no disponible. Intenta de nuevo.');
-      return;
-    }
+    if (status === 409) { setServerError(message || 'Conflicto: datos ya existentes.'); return; }
+    if (status >= 500) { setServerError('Servidor no disponible. Intenta de nuevo.'); return; }
     setServerError(message || 'No se pudo completar el registro.');
   };
 
@@ -148,20 +148,27 @@ export const Signup = () => {
 
     try {
       setLoading(true);
-      // Enviar datos "limpios"
+
       const payload = {
-        name: form.name.trim(),
-        lastName: form.lastName.trim(),
-        role: form.role.trim(),
-        username: form.username.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
+        name: form.name,
+        lastName: form.lastName,
+        role: form.role,
+        username: form.username,
+        email: form.email,
+        phone: form.phone,
         password: form.password,
         confirmPassword: form.confirmPassword,
+        acceptedTerms: form.acceptedTerms,
+        referredByCode: form.referredByCode, // opcional
       };
-      await registerRequest(payload);
+
+      const res = await registerRequest(payload);
+
+      const token = res?.token || res?.data?.token || res?.accessToken || null;
+      if (token) { try { localStorage.setItem('token_shain', token); } catch {} }
+
       alert('✅ Cuenta creada con éxito');
-      navigate('/');
+      navigate('/'); // o al dashboard si prefieres autologin
     } catch (err) {
       handleServerError(err);
     } finally {
@@ -169,13 +176,11 @@ export const Signup = () => {
     }
   };
 
-  // helper CSS para inputs con error
   const inputBase =
     'w-full bg-white/10 px-4 py-2 rounded placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-purple-400/60 transition';
   const inputWithError = 'ring-2 ring-red-400 focus:ring-red-400';
 
   const hasError = (name) => Boolean(errors[name]);
-
   const isSubmitDisabled = loading;
 
   return (
@@ -192,7 +197,6 @@ export const Signup = () => {
             Crea tu cuenta <span className="text-[#a58fff]">Shain</span>
           </h2>
 
-          {/* Error global del servidor */}
           {serverError && (
             <div className="mb-4 rounded bg-red-500/15 border border-red-500/30 text-red-200 px-3 py-2 text-sm">
               {serverError}
@@ -200,7 +204,6 @@ export const Signup = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Campos */}
             <div className="flex gap-2">
               <div className="w-1/2">
                 <input
@@ -210,10 +213,8 @@ export const Signup = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   className={`${inputBase} ${hasError('name') ? inputWithError : ''}`}
-                  aria-invalid={hasError('name')}
-                  aria-describedby={hasError('name') ? 'err-name' : undefined}
                 />
-                {hasError('name') && <p id="err-name" className="text-red-300 text-xs mt-1">{errors.name}</p>}
+                {hasError('name') && <p className="text-red-300 text-xs mt-1">{errors.name}</p>}
               </div>
               <div className="w-1/2">
                 <input
@@ -223,10 +224,8 @@ export const Signup = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   className={`${inputBase} ${hasError('lastName') ? inputWithError : ''}`}
-                  aria-invalid={hasError('lastName')}
-                  aria-describedby={hasError('lastName') ? 'err-lastName' : undefined}
                 />
-                {hasError('lastName') && <p id="err-lastName" className="text-red-300 text-xs mt-1">{errors.lastName}</p>}
+                {hasError('lastName') && <p className="text-red-300 text-xs mt-1">{errors.lastName}</p>}
               </div>
             </div>
 
@@ -237,10 +236,8 @@ export const Signup = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('role') ? inputWithError : ''}`}
-              aria-invalid={hasError('role')}
-              aria-describedby={hasError('role') ? 'err-role' : undefined}
             />
-            {hasError('role') && <p id="err-role" className="text-red-300 text-xs -mt-2">{errors.role}</p>}
+            {hasError('role') && <p className="text-red-300 text-xs -mt-2">{errors.role}</p>}
 
             <input
               name="username"
@@ -249,10 +246,8 @@ export const Signup = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('username') ? inputWithError : ''}`}
-              aria-invalid={hasError('username')}
-              aria-describedby={hasError('username') ? 'err-username' : undefined}
             />
-            {hasError('username') && <p id="err-username" className="text-red-300 text-xs -mt-2">{errors.username}</p>}
+            {hasError('username') && <p className="text-red-300 text-xs -mt-2">{errors.username}</p>}
 
             <input
               type="email"
@@ -262,10 +257,8 @@ export const Signup = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('email') ? inputWithError : ''}`}
-              aria-invalid={hasError('email')}
-              aria-describedby={hasError('email') ? 'err-email' : undefined}
             />
-            {hasError('email') && <p id="err-email" className="text-red-300 text-xs -mt-2">{errors.email}</p>}
+            {hasError('email') && <p className="text-red-300 text-xs -mt-2">{errors.email}</p>}
 
             <input
               name="phone"
@@ -274,10 +267,27 @@ export const Signup = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('phone') ? inputWithError : ''}`}
-              aria-invalid={hasError('phone')}
-              aria-describedby={hasError('phone') ? 'err-phone' : undefined}
             />
-            {hasError('phone') && <p id="err-phone" className="text-red-300 text-xs -mt-2">{errors.phone}</p>}
+            {hasError('phone') && <p className="text-red-300 text-xs -mt-2">{errors.phone}</p>}
+
+            {/* Código de referido (opcional) */}
+            <div>
+              <input
+                name="referredByCode"
+                placeholder="Código de referido (opcional)"
+                value={form.referredByCode}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`${inputBase} ${hasError('referredByCode') ? inputWithError : ''}`}
+              />
+              {hasError('referredByCode') ? (
+                <p className="text-red-300 text-xs -mt-2">{errors.referredByCode}</p>
+              ) : (
+                <p className="text-white/60 text-xs mt-1">
+                  Si alguien te invitó, ingresa su código para asignar el referido.
+                </p>
+              )}
+            </div>
 
             <input
               type="password"
@@ -287,10 +297,9 @@ export const Signup = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('password') ? inputWithError : ''}`}
-              aria-invalid={hasError('password')}
-              aria-describedby={hasError('password') ? 'err-password' : undefined}
+              autoComplete="new-password"
             />
-            {hasError('password') && <p id="err-password" className="text-red-300 text-xs -mt-2">{errors.password}</p>}
+            {hasError('password') && <p className="text-red-300 text-xs -mt-2">{errors.password}</p>}
 
             <input
               type="password"
@@ -300,14 +309,12 @@ export const Signup = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('confirmPassword') ? inputWithError : ''}`}
-              aria-invalid={hasError('confirmPassword')}
-              aria-describedby={hasError('confirmPassword') ? 'err-confirmPassword' : undefined}
+              autoComplete="new-password"
             />
             {hasError('confirmPassword') && (
-              <p id="err-confirmPassword" className="text-red-300 text-xs -mt-2">{errors.confirmPassword}</p>
+              <p className="text-red-300 text-xs -mt-2">{errors.confirmPassword}</p>
             )}
 
-            {/* Checkbox */}
             <label className="flex items-center gap-2 text-sm mt-2">
               <input
                 type="checkbox"
@@ -328,7 +335,6 @@ export const Signup = () => {
               <p className="text-red-300 text-xs -mt-2">{errors.acceptedTerms}</p>
             )}
 
-            {/* Botón */}
             <button
               type="submit"
               disabled={isSubmitDisabled}
@@ -359,3 +365,5 @@ export const Signup = () => {
     </div>
   );
 };
+
+export default Signup;

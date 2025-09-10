@@ -1,4 +1,4 @@
-import { axiosInstance } from '@services/axiosclient';
+import { axiosApi } from '@services/axiosclient';
 
 const pick = (r) => r?.data?.data ?? r?.data ?? r;
 
@@ -7,7 +7,7 @@ const pick = (r) => r?.data?.data ?? r?.data ?? r;
  */
 export const getAvailableTimeslots = async (date) => {
   try {
-    const res = await axiosInstance.get(`/timeslots/available`, {
+    const res = await axiosApi.get(`/timeslots/available`, {
       params: { date },
       withCredentials: true,
     });
@@ -30,7 +30,7 @@ export const getAvailableTimeslots = async (date) => {
  */
 export const bookAppointmentService = async (appointment) => {
   try {
-    const { data } = await axiosInstance.post('/bookings', appointment, {
+    const { data } = await axiosApi.post('/bookings', appointment, {
       withCredentials: true,
     });
     return data;
@@ -46,7 +46,7 @@ export const bookAppointmentService = async (appointment) => {
  */
 export const getAllAppointmentsService = async () => {
   try {
-    const res = await axiosInstance.get('/bookings', {
+    const res = await axiosApi.get('/bookings', {
       params: { populate: 'timeSlot' }, // <= ajusta si tu API usa otro nombre
       withCredentials: true,
     });

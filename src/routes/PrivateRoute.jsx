@@ -2,7 +2,7 @@
 import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@context/AuthContext";
-import { axiosInstance } from "@services/axiosclient";
+import { axiosApi } from "@services/axiosclient";
 
 export const PrivateRoute = ({ children }) => {
   const { user, logout } = useAuth();
@@ -12,7 +12,7 @@ export const PrivateRoute = ({ children }) => {
   useEffect(() => {
     const checkTrial = async () => {
       try {
-        const res = await axiosInstance.get("/auth/check-trial", { withCredentials: true });
+        const res = await axiosApi.get("/auth/check-trial", { withCredentials: true });
         if (res.data?.trialExpired) {
           setExpired(true);
           await logout(); // limpia y redirige

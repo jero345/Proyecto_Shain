@@ -1,8 +1,8 @@
-import { axiosInstance } from '@services/axiosclient';
+import { axiosApi } from '@services/axiosclient';
 
 export const getFinanceSummary = async (date) => {
   try {
-    const { data } = await axiosInstance.get(`/movements/summary?date=${date}`, {
+    const { data } = await axiosApi.get(`/movements/summary?date=${date}`, {
       withCredentials: true,
     });
 
@@ -45,7 +45,7 @@ export const getFinanceSummary = async (date) => {
  */
 export const getLastMovements = async (days = 30) => {
   try {
-    const { data } = await axiosInstance.get(`/movements/last?days=${days}`, {
+    const { data } = await axiosApi.get(`/movements/last?days=${days}`, {
       withCredentials: true,
     });
 

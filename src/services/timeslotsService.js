@@ -1,5 +1,5 @@
 // src/services/timeslotsService.js
-import { axiosInstance } from '@services/axiosclient';
+import { axiosApi } from '@services/axiosclient';
 
 export const createTimeslotsService = async (payload) => {
   // payload ejemplo:
@@ -10,7 +10,7 @@ export const createTimeslotsService = async (payload) => {
   //   slotMinutes: 30,
   //   capacity: 1
   // }
-  const { data } = await axiosInstance.post("/timeslots/", payload, {
+  const { data } = await axiosApi.post("/timeslots/", payload, {
     withCredentials: true,
   });
   return data;
