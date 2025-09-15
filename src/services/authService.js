@@ -27,7 +27,6 @@ async function ensureClientToken(initialToken) {
       return token;
     }
   } catch (e) {
-    console.warn('[auth] token exchange falló:', e?.response?.data || e.message);
   }
   // 3) (Dev) Fuerza token dummy si lo definiste en .env
   if (FAKE_TOKEN) {
@@ -58,7 +57,6 @@ function stripEmpty(obj) {
   });
   return out;
 }
-
 /**
  * Normaliza y añade ALIAS por si el backend usa otros nombres:
  * - firstName (+ name, fullName)
@@ -75,16 +73,18 @@ function stripEmpty(obj) {
 function normalizeRegisterPayload(form) {
   const f = stripEmpty(form);
 
+  // Normalizar nombres
   const firstName = f.firstName ?? f.name ?? '';
-  const lastName  = f.lastName ?? '';
-  const fullName  = `${firstName} ${lastName}`.trim();
+  const lastName = f.lastName ?? '';
+  const fullName = `${firstName} ${lastName}`.trim();
 
+  // Construir el payload con los alias adecuados
   const payload = stripEmpty({
     firstName,
     lastName,
-    fullName,                 // alias común
-    name: firstName,          // alias común
-    last_name: lastName,      // alias común
+    fullName,           // alias común
+    name: firstName,    // alias común
+    last_name: lastName,// alias común
 
     username: f.username,
     user: f.username,
@@ -103,21 +103,24 @@ function normalizeRegisterPayload(form) {
     password_confirmation: f.confirmPassword,
     confirm_password: f.confirmPassword,
 
+    // Asegurar que los términos sean válidos
     acceptedTerms: Boolean(f.acceptedTerms),
     terms: Boolean(f.acceptedTerms),
     termsAccepted: Boolean(f.acceptedTerms),
 
-    referredByCode: f.referredByCode || f.referralCode || f.referrerCode || f.ref_code || f.referredBy,
-    referralCode: f.referredByCode || f.referralCode,
-    referrerCode: f.referredByCode || f.referrerCode,
-    ref_code: f.referredByCode || f.ref_code,
-    referredBy: f.referredByCode || f.referredBy,
+    // Normalización del código de referido, permitiendo valores nulos o indefinidos
+    referredByCode: f.referredByCode || f.referralCode || f.referrerCode || f.ref_code || f.referredBy || undefined,
+    referralCode: f.referredByCode || f.referralCode || undefined,
+    referrerCode: f.referredByCode || f.referrerCode || undefined,
+    ref_code: f.referredByCode || f.ref_code || undefined,
+    referredBy: f.referredByCode || f.referredBy || undefined,
 
     role: f.role,
   });
 
   return payload;
 }
+
 
 export const loginRequest = async (credentials) => {
   try {

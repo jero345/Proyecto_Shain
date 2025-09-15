@@ -49,7 +49,6 @@ export const ChatBot = ({ userName = 'Usuario' }) => {
   async function sendChatToChatbot(text) {
     ; // debe existir tras login
     const headers = {"x-chatbot-key": 'VL0AouMPkVIW7ERvheLmSw6d3HNIcGrdix/eYprnh/M=' };
-    console.log(headers);
     try {
       const res = await axiosChatbot.post(
         '/chat',

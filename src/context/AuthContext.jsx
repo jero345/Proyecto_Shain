@@ -5,11 +5,16 @@ import { axiosApi } from "@services/axiosclient";
 export const AuthContext = createContext(null);
 
 const USER_KEY = "user";
-const TOKEN_KEY = "token";
+const TOKEN_KEY = "token_shain"; // ⚡ usamos el mismo nombre de tu backend
 
 function normalizeUser(raw) {
   if (!raw || typeof raw !== "object") return null;
-  const role = raw.role || raw?.user?.role || raw?.data?.role || raw?.profile?.role || null;
+  const role =
+    raw.role ||
+    raw?.user?.role ||
+    raw?.data?.role ||
+    raw?.profile?.role ||
+    null;
   return { ...raw, role: role ? String(role) : null };
 }
 
@@ -22,16 +27,35 @@ export default function AuthProvider({ children }) {
       return null;
     }
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Hidratar token y header
+  // Hidratar token y user al montar
   useEffect(() => {
-    try {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        axiosApi.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    const bootstrap = async () => {
+      try {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+          axiosApi.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${token}`;
+        }
+
+        // validar sesión con backend
+        const { data } = await axiosApi.get("/auth/me", {
+          withCredentials: true,
+        });
+        if (data) {
+          const normalized = normalizeUser(data);
+          setUser(normalized);
+          localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+        }
+      } catch {
+        // si falla no limpiamos el token para que no se pierda al recargar
+      } finally {
+        setLoading(false);
       }
-    } catch {}
+    };
+    bootstrap();
   }, []);
 
   const loginUser = (userData, token = null) => {
@@ -45,7 +69,7 @@ export default function AuthProvider({ children }) {
   };
 
   const updateUser = (partial) => {
-    setUser(prev => {
+    setUser((prev) => {
       const next = normalizeUser({ ...(prev || {}), ...(partial || {}) });
       localStorage.setItem(USER_KEY, JSON.stringify(next));
       return next;
@@ -54,15 +78,15 @@ export default function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      // si tu backend invalida cookie/sesión:
-      await axiosApi.post("/auth/logout", null, { withCredentials: true }).catch(() => {});
+      await axiosApi
+        .post("/auth/logout", null, { withCredentials: true })
+        .catch(() => {});
     } finally {
       setUser(null);
       localStorage.removeItem(USER_KEY);
       localStorage.removeItem(TOKEN_KEY);
       delete axiosApi.defaults.headers.common["Authorization"];
-      // salida limpia (evita volver con botón atrás)
-      window.location.replace("/");
+      window.location.replace("/"); // salida limpia
     }
   };
 
@@ -78,8 +102,9 @@ export default function AuthProvider({ children }) {
     [user, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }
 
-/** Hook único */
 export const useAuth = () => useContext(AuthContext);

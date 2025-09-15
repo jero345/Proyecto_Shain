@@ -28,7 +28,7 @@ const ALL_ITEMS = [
   { icon: <Home size={20} />, label: "Inicio", to: "/dashboard/home", roles: [ROLES.BARBERO, ROLES.OWNER] },
   { icon: <BarChart2 size={20} />, label: "Finanzas", to: "/dashboard/finanzas", roles: [ROLES.BARBERO, ROLES.OWNER] },
   { icon: <PlusCircle size={20} />, label: "Agregar movimientos", to: "/dashboard/agregar-movimiento", roles: [ROLES.BARBERO, ROLES.OWNER] },
-  { icon: <MessageCircle size={20} />, label: "ChatBot", to: "/dashboard/chatbot", roles: [ROLES.BARBERO, ROLES.OWNER] },
+  { icon: <MessageCircle size={20} />, label: "ShainBot", to: "/dashboard/chatbot", roles: [ROLES.BARBERO, ROLES.OWNER] },
   { icon: <FileText size={20} />, label: "Historial", to: "/dashboard/historial", roles: [ROLES.BARBERO, ROLES.OWNER] },
   { icon: <Bell size={20} />, label: "Notificaciones", to: "/dashboard/notificaciones", roles: [ROLES.BARBERO, ROLES.OWNER] },
 

@@ -1,19 +1,19 @@
 // src/views/AppointmentsList.jsx
-import { useState, useEffect } from 'react';
-import { getAllAppointmentsService } from '@services/appointmentsService';
+import { useState, useEffect } from "react";
+import { getAllAppointmentsService } from "@services/appointmentsService";
 
 export const AppointmentsList = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
         const data = await getAllAppointmentsService();
-        setAppointments(data);
+        setAppointments(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError('No se pudieron cargar las citas.');
+        setError("No se pudieron cargar las citas.");
       } finally {
         setLoading(false);
       }
@@ -44,7 +44,9 @@ export const AppointmentsList = () => {
       </h1>
 
       {appointments.length === 0 ? (
-        <p className="text-center text-lg text-white/70">No hay citas registradas.</p>
+        <p className="text-center text-lg text-white/70">
+          No hay citas registradas.
+        </p>
       ) : (
         <div className="overflow-x-auto bg-white/10 rounded-2xl shadow-lg">
           <table className="w-full text-left text-sm text-white/90">
@@ -58,17 +60,43 @@ export const AppointmentsList = () => {
             </thead>
             <tbody>
               {[...appointments]
-                .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .map((appt) => (
-                  <tr key={appt.id} className="border-b border-white/10 hover:bg-white/10">
-                    <td className="px-6 py-4">
-                      {appt.date ? new Date(appt.date).toLocaleDateString() : '—'}
-                    </td>
-                    <td className="px-6 py-4">{appt.hour ?? '—'}</td>
-                    <td className="px-6 py-4">{appt.customerName || '—'}</td>
-                    <td className="px-6 py-4">{appt.description || '—'}</td>
-                  </tr>
-                ))}
+                .sort((a, b) => new Date(a?.date || 0) - new Date(b?.date || 0))
+                .map((appt) => {
+                  const hasDate = !!appt?.date;
+                  const d = hasDate ? new Date(appt.date) : null;
+
+                  // Si viene "hour" úsala; si no, formatea la hora del campo date si trae hora.
+                  const horaStr =
+                    (appt?.hour ?? "")
+                      .toString()
+                      .trim() ||
+                    (hasDate
+                      ? d.toLocaleTimeString("es-CO", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—");
+
+                  const fechaStr = hasDate
+                    ? d.toLocaleDateString("es-CO")
+                    : "—";
+
+                  return (
+                    <tr
+                      key={appt.id || appt._id}
+                      className="border-b border-white/10 hover:bg-white/10"
+                    >
+                      <td className="px-6 py-4">{fechaStr}</td>
+                      <td className="px-6 py-4">{horaStr}</td>
+                      <td className="px-6 py-4">
+                        {appt?.customerName || appt?.clientName || "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        {appt?.description?.trim() || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -76,3 +104,5 @@ export const AppointmentsList = () => {
     </div>
   );
 };
+
+export default AppointmentsList;

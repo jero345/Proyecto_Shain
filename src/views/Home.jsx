@@ -1,4 +1,4 @@
-// Home.jsx
+// src/views/Home.jsx
 import {
   ArrowUpRight, Plus, ScrollText, Home as HomeIcon,
   TrendingUp, TrendingDown, RefreshCcw,
@@ -83,14 +83,12 @@ export const Home = () => {
       }
     };
 
-    // Si había cache mostramos de una → loading se apaga rápido
     if (cachedSummary || cachedMovs) {
       setLoading(false);
-      fetchData(); // revalida sin bloquear UI
+      fetchData();
     } else {
-      fetchData(); // primera carga normal
+      fetchData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayDate]);
 
   if (loading) {
@@ -122,8 +120,7 @@ export const Home = () => {
             <div>
               <p className="text-sm text-green-200 mb-1">Balance del día</p>
               <h2 className="text-4xl font-extrabold text-lime-300">
-                {balanceDay >= 0 ? `+$${Number(balanceDay).toLocaleString()}`
-                                   : `-$${Math.abs(Number(balanceDay)).toLocaleString()}`}
+                {balanceDay >= 0 ? `+$${Number(balanceDay).toLocaleString()}` : `-$${Math.abs(Number(balanceDay)).toLocaleString()}`}
               </h2>
             </div>
             <div className="flex flex-col text-right ml-4">
@@ -172,33 +169,6 @@ export const Home = () => {
               <p className="text-center text-white/60">📊 Sin datos disponibles</p>
             )}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
-          <MiniCardChart
-            title="Ingresos Totales"
-            value={`$${Number(ingresosMes).toLocaleString()}`}
-            percent={summary?.salesGrowthPercentageMonth ?? 0}
-            color="green"
-            icon={<TrendingUp size={14} />}
-            data={chartData.map((d) => ({ value: d.Ingresos }))}
-          />
-          <MiniCardChart
-            title="Gastos Totales"
-            value={`-$${Number(egresosMes).toLocaleString()}`}
-            percent={-15}
-            color="red"
-            icon={<TrendingDown size={14} />}
-            data={chartData.map((d) => ({ value: d.Egresos }))}
-          />
-          <MiniCardChart
-            title="Margen de beneficio"
-            value={`$${(Number(ingresosMes) - Number(egresosMes)).toLocaleString()}`}
-            percent={21}
-            color="cyan"
-            icon={<RefreshCcw size={14} />}
-            data={chartData.map((d) => ({ value: d.Ingresos - d.Egresos }))}
-          />
         </div>
       </div>
     </div>

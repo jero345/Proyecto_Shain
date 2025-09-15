@@ -1,7 +1,11 @@
+// src/views/AddMovement.jsx
 import { useState, useEffect } from "react";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { addMovementService, getLastMovements } from "@services/addMovementService";
+import {
+  addMovementService,
+  getLastMovements,
+} from "@services/addMovementService";
 
 // helpers
 const getToday = () => new Date().toISOString().split("T")[0]; // 'YYYY-MM-DD'
@@ -13,11 +17,17 @@ const ymd = (d) => (d ? String(d).slice(0, 10) : null);
 
 // cache utils
 const readCache = (k) => {
-  try { const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : null; }
-  catch { return null; }
+  try {
+    const raw = localStorage.getItem(k);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 };
 const writeCache = (k, v) => {
-  try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {}
 };
 
 export const AddMovement = () => {
@@ -37,7 +47,6 @@ export const AddMovement = () => {
   useEffect(() => {
     const draft = readCache(DRAFT_KEY);
     if (draft) {
-      // si el draft no trae fecha, usa hoy
       if (!draft.date) draft.date = getToday();
       setForm((prev) => ({ ...prev, ...draft }));
     }
@@ -54,9 +63,11 @@ export const AddMovement = () => {
       try {
         setLoadingRecent(true);
         const list = await getLastMovements(2); // mezcla ingresos + egresos
-        const onlySelected = list
+        const onlySelected = (Array.isArray(list) ? list : [])
           .filter((m) => ymd(m.date) === form.date)
-          .sort((a, b) => (ymd(b.date) || "").localeCompare(ymd(a.date) || ""))
+          .sort((a, b) =>
+            (ymd(b.date) || "").localeCompare(ymd(a.date) || "")
+          )
           .slice(0, 6);
 
         setRecentMovements(onlySelected);
@@ -89,9 +100,9 @@ export const AddMovement = () => {
       const payload = {
         type: form.type,
         frecuencyType: form.frequencyType, // backend espera 'frecuencyType'
-        value: form.value.toString(),      // backend espera string
+        value: form.value.toString(), // backend espera string
         description: form.description,
-        date: form.date,                   // 'YYYY-MM-DD'
+        date: form.date, // 'YYYY-MM-DD'
       };
 
       const response = await addMovementService(payload);
@@ -175,26 +186,34 @@ export const AddMovement = () => {
               />
             </div>
 
-            {/* Frecuencia */}
+            {/* Frecuencia (colores diferentes) */}
             <div>
               <label className="block text-sm mb-1">¿Qué tipo es?*</label>
               <div className="flex items-center gap-4 mt-2">
-                {["nuevo", "recurrente"].map((freq) => (
-                  <button
-                    type="button"
-                    key={freq}
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, frequencyType: freq }))
-                    }
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
-                      form.frequencyType === freq
-                        ? "bg-white/20 border-white text-white"
-                        : "bg-transparent border-white/30 text-white/60 hover:border-white/50"
-                    }`}
-                  >
-                    {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                  </button>
-                ))}
+                {["nuevo", "recurrente"].map((freq) => {
+                  const isActive = form.frequencyType === freq;
+                  const activeCls =
+                    freq === "nuevo"
+                      ? "bg-emerald-600 text-white border-emerald-500"
+                      : "bg-indigo-600 text-white border-indigo-500";
+
+                  return (
+                    <button
+                      type="button"
+                      key={freq}
+                      onClick={() =>
+                        setForm((prev) => ({ ...prev, frequencyType: freq }))
+                      }
+                      className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
+                        isActive
+                          ? activeCls
+                          : "bg-transparent border-white/30 text-white/60 hover:border-white/50"
+                      }`}
+                    >
+                      {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -262,7 +281,8 @@ export const AddMovement = () => {
           ) : (
             <ul className="space-y-4">
               {recentMovements.slice(0, 6).map((item, idx) => {
-                const isIngreso = (item.type || "").toLowerCase() === "ingreso";
+                const isIngreso =
+                  (item.type || "").toLowerCase() === "ingreso";
                 return (
                   <li
                     key={item.id || item._id || idx}
@@ -274,7 +294,11 @@ export const AddMovement = () => {
                           isIngreso ? "bg-green-500" : "bg-red-500"
                         }`}
                       >
-                        {isIngreso ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                        {isIngreso ? (
+                          <ArrowUpRight size={16} />
+                        ) : (
+                          <ArrowDownRight size={16} />
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium capitalize">
@@ -293,13 +317,17 @@ export const AddMovement = () => {
                       >
                         {isIngreso ? "+" : "-"}${money(item.value)}
                       </p>
-                      <p className="text-xs text-white/60">{ymd(item.date) || form.date}</p>
+                      <p className="text-xs text-white/60">
+                        {ymd(item.date) || form.date}
+                      </p>
                     </div>
                   </li>
                 );
               })}
               {recentMovements.length === 0 && (
-                <li className="text-white/60">Sin movimientos para {form.date}.</li>
+                <li className="text-white/60">
+                  Sin movimientos para {form.date}.
+                </li>
               )}
             </ul>
           )}
@@ -308,3 +336,5 @@ export const AddMovement = () => {
     </div>
   );
 };
+
+export default AddMovement;

@@ -39,7 +39,6 @@ export const getFinanceSummary = async (date) => {
   }
 };
 
-
 /**
  * 📌 Histórico de movimientos (para gráfica)
  */
@@ -48,8 +47,6 @@ export const getLastMovements = async (days = 30) => {
     const { data } = await axiosApi.get(`/movements/last?days=${days}`, {
       withCredentials: true,
     });
-
-    console.log("📥 Respuesta /last:", data);
 
     const { incomes = [], expense = [] } = data?.data || {};
 

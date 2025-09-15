@@ -1,4 +1,3 @@
-// src/views/Signup.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { registerRequest } from '@services/authService';
@@ -32,7 +31,6 @@ export const Signup = () => {
     setServerError('');
   };
 
-  // Autocompletar código de referido desde query (?ref, ?referral, ?codigo, ?codigoReferido)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const ref =
@@ -44,7 +42,6 @@ export const Signup = () => {
     if (ref) setField('referredByCode', ref.trim());
   }, [location.search]);
 
-  // Validaciones básicas
   const validate = (values) => {
     const e = {};
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,21 +52,15 @@ export const Signup = () => {
     if (!values.lastName.trim()) e.lastName = 'Apellido es obligatorio.';
     if (!values.role.trim()) e.role = 'Rol es obligatorio.';
     if (!values.username.trim()) e.username = 'Nombre de usuario es obligatorio.';
-
     if (!values.email.trim()) e.email = 'Correo es obligatorio.';
     else if (!emailRe.test(values.email)) e.email = 'Correo no es válido.';
-
     if (!values.phone.trim()) e.phone = 'Teléfono es obligatorio.';
     else if (!phoneRe.test(values.phone)) e.phone = 'Teléfono no es válido.';
-
     if (!values.password) e.password = 'Contraseña es obligatoria.';
     else if (values.password.length < 6) e.password = 'Mínimo 6 caracteres.';
-
     if (!values.confirmPassword) e.confirmPassword = 'Confirma tu contraseña.';
     else if (values.password !== values.confirmPassword) e.confirmPassword = 'Las contraseñas no coinciden.';
-
     if (!values.acceptedTerms) e.acceptedTerms = 'Debes aceptar los términos y condiciones.';
-
     if (values.referredByCode && !refRe.test(values.referredByCode.trim())) {
       e.referredByCode = 'Código inválido (4–16 caracteres alfanuméricos).';
     }
@@ -90,7 +81,6 @@ export const Signup = () => {
     }
   };
 
-  // Mapeo de errores del backend -> campos / mensaje general
   const handleServerError = (axiosError) => {
     const res = axiosError?.response;
     if (!res) {
@@ -102,7 +92,6 @@ export const Signup = () => {
     const newFieldErrors = { ...errors };
     const message = data?.message || data?.error || data?.msg;
 
-    // Puede venir { errors: { campo: 'msg' } } o { errors: [{ field,msg }] }
     if (data?.errors) {
       if (Array.isArray(data.errors)) {
         data.errors.forEach((it) => {
@@ -188,11 +177,9 @@ export const Signup = () => {
       {/* Panel izquierdo - Formulario */}
       <div className="w-full md:w-1/2 flex flex-col justify-center items-start px-10 py-12 relative bg-[#4B0D69] rounded-r-[30px] shadow-lg">
         <div className="absolute top-0 left-0 w-full h-full bg-[#2b0c4a]/30 rounded-r-[30px] pointer-events-none" />
-
         <div className="z-10 w-full max-w-md">
           <h1 className="text-4xl font-bold mb-2">Bienvenido</h1>
           <p className="mb-6 text-white/80">Nos alegra verte por aquí</p>
-
           <h2 className="text-2xl font-bold mb-4">
             Crea tu cuenta <span className="text-[#a58fff]">Shain</span>
           </h2>
@@ -229,14 +216,18 @@ export const Signup = () => {
               </div>
             </div>
 
-            <input
+            {/* Dropdown para el rol */}
+            <select
               name="role"
-              placeholder="Rol"
               value={form.role}
               onChange={handleChange}
               onBlur={handleBlur}
               className={`${inputBase} ${hasError('role') ? inputWithError : ''}`}
-            />
+            >
+              <option value="">Seleccione un rol</option>
+              <option value="barbero">Barbero</option>
+              <option value="propietario_negocio">Propietario de negocio</option>
+            </select>
             {hasError('role') && <p className="text-red-300 text-xs -mt-2">{errors.role}</p>}
 
             <input

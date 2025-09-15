@@ -12,7 +12,7 @@ export const TrialExpired = () => {
         Para continuar disfrutando de todos los beneficios de nuestra plataforma, actualiza tu plan y sigue creciendo con nosotros 🚀.
       </p>
       <button
-        onClick={() => window.location.href = "https://tu-pasarela-de-pago.com"}
+        onClick={() => window.location.href = "https://shain.finance/"}
         className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-6 py-3 rounded-full flex items-center gap-2"
       >
         <FaCreditCard /> Actualizar Plan

@@ -1,41 +1,44 @@
-// src/views/Finance.jsx
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { AlertTriangle, BarChart } from 'lucide-react';
-import { Chart } from '@components/Chart';
-import { MiniCardChart } from '@components/MiniCardChart';
-import { getFinanceSummary, getLastMovements } from '@services/financeService';
-import { getBusinessByUser } from '@services/businessService';
-import { useAuth } from '@context/AuthContext';
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { AlertTriangle, BarChart } from "lucide-react";
+import { Chart } from "@components/Chart";
+import { MiniCardChart } from "@components/MiniCardChart";
+import {
+  getFinanceSummary,
+  getLastMovements,
+} from "@services/financeService";
+import { getBusinessByUser } from "@services/businessService";
+import { useAuth } from "@context/AuthContext";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 export const Finance = () => {
   const navigate = useNavigate();
   const { user } = useAuth() || {};
-  const userId = user?.id || user?._id || user?.userId || '';
+  const userId = user?.id || user?._id || user?.userId || "";
 
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [goal, setGoal] = useState(5000); // se actualizará con la meta del negocio
 
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = new Date().toISOString().split("T")[0];
 
   const parseGoal = (v) => {
-    // Convierte "100000" / "100.000" / "$100,000" -> número
     if (v == null) return 0;
-    const n = Number(String(v).replace(/[^\d.]/g, ''));
+    const n = Number(String(v).replace(/[^\d.]/g, ""));
     return Number.isFinite(n) ? n : 0;
   };
 
   // 🔧 Convertir movimientos para la gráfica
   const buildChartFromMovements = (movements) => {
     const grouped = {};
-    movements.forEach((m) => {
-      const date = new Date(m.date).toLocaleDateString('es-CO');
+    (Array.isArray(movements) ? movements : []).forEach((m) => {
+      const date = new Date(m.date).toLocaleDateString("es-CO");
       if (!grouped[date]) grouped[date] = { date, Ingresos: 0, Egresos: 0 };
-
-      if (m.type === 'Ingreso') grouped[date].Ingresos += Number(m.value) || 0;
-      if (m.type === 'Egreso') grouped[date].Egresos += Number(m.value) || 0;
+      // normaliza tipos
+      const t = (m.type || "").toLowerCase();
+      if (t === "ingreso") grouped[date].Ingresos += Number(m.value) || 0;
+      if (t === "egreso") grouped[date].Egresos += Number(m.value) || 0;
     });
 
     return Object.values(grouped).sort(
@@ -45,8 +48,7 @@ export const Finance = () => {
 
   // 1) Cargar meta mensual (goal) desde cache y/o API
   useEffect(() => {
-    // a) cache local para pintar rápido
-    const cached = localStorage.getItem('business');
+    const cached = localStorage.getItem("business");
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -56,7 +58,6 @@ export const Finance = () => {
       } catch {}
     }
 
-    // b) fetch real si tenemos userId
     let ignore = false;
     const loadGoal = async () => {
       if (!userId) return;
@@ -66,15 +67,12 @@ export const Finance = () => {
         if (business?.goal != null) {
           setGoal(parseGoal(business.goal));
         }
-      } catch {
-        // silencioso: si falla, se queda con el cached o default
-      }
+      } catch {}
     };
     loadGoal();
 
-    // c) escuchar cambios desde otras pestañas
     const onStorage = (e) => {
-      if (e.key === 'business' && e.newValue) {
+      if (e.key === "business" && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed?.goal != null) {
@@ -83,17 +81,17 @@ export const Finance = () => {
         } catch {}
       }
     };
-    window.addEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
 
     return () => {
       ignore = true;
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener("storage", onStorage);
     };
   }, [userId]);
 
   // 2) Resumen y movimientos
   useEffect(() => {
-    const cachedSummary = localStorage.getItem('financeSummary');
+    const cachedSummary = localStorage.getItem("financeSummary");
     if (cachedSummary) {
       setSummary(JSON.parse(cachedSummary));
     }
@@ -107,7 +105,7 @@ export const Finance = () => {
 
         if (summaryData) {
           setSummary(summaryData);
-          localStorage.setItem('financeSummary', JSON.stringify(summaryData));
+          localStorage.setItem("financeSummary", JSON.stringify(summaryData));
         }
 
         setChartData(buildChartFromMovements(movements));
@@ -129,14 +127,18 @@ export const Finance = () => {
     );
   }
 
-  // 🔹 Cálculo de porcentaje de meta cumplida (seguro)
   const ingresos = Number(summary?.ingresos) || 0;
+  const egresos = Number(summary?.egresos) || 0;
   const safeGoal = parseGoal(goal);
-  const percentage = safeGoal > 0 ? Math.min((ingresos / safeGoal) * 100, 100) : 0;
+  const percentage =
+    safeGoal > 0 ? Math.min((ingresos / safeGoal) * 100, 100) : 0;
 
   const circleRadius = 40;
   const circleCircumference = 2 * Math.PI * circleRadius;
-  const progress = circleCircumference - (percentage / 100) * circleCircumference;
+  const progress =
+    circleCircumference - (percentage / 100) * circleCircumference;
+
+  const isOk = ingresos >= egresos;
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
@@ -152,7 +154,7 @@ export const Finance = () => {
         <div className="flex flex-col md:flex-row justify-between lg:col-span-2 bg-[#0f172a] rounded-xl border border-white/10 p-6 shadow gap-6">
           <div>
             <h2 className="text-4xl font-bold mb-1">
-              ${summary?.balanceMonth?.toLocaleString() || 0}
+              ${(Number(summary?.balanceMonth) || 0).toLocaleString()}
             </h2>
             <p className="text-xs text-white/70 mb-4">Balance mensual</p>
             <div className="flex items-center gap-6">
@@ -164,7 +166,7 @@ export const Finance = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-red-400 text-sm font-semibold">
-                  - ${summary?.egresos?.toLocaleString() || 0}
+                  - ${egresos.toLocaleString()}
                 </span>
                 <span className="text-xs text-white/50">Egresos</span>
               </div>
@@ -196,7 +198,9 @@ export const Finance = () => {
                 />
               </svg>
               <span className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold">{Math.round(percentage)}%</span>
+                <span className="text-lg font-bold">
+                  {Math.round(percentage)}%
+                </span>
                 <span className="text-[10px] text-white/70">Completado</span>
               </span>
             </div>
@@ -209,7 +213,7 @@ export const Finance = () => {
                 Llevas un total de {Math.round(percentage)}% completado
               </p>
               <button
-                onClick={() => navigate('/dashboard/agregar-movimiento')}
+                onClick={() => navigate("/dashboard/agregar-movimiento")}
                 className="flex items-center justify-center gap-2 text-xs bg-white text-black px-4 py-1.5 rounded-full font-semibold shadow hover:opacity-90 transition"
               >
                 Agregar Movimiento
@@ -219,58 +223,61 @@ export const Finance = () => {
         </div>
 
         {/* Panel: Alerta */}
-        <div className="bg-[#991b1b] rounded-xl border border-red-800 p-5 shadow">
+        <div
+          className={`rounded-xl p-5 shadow border ${
+            isOk ? "bg-[#14532d] border-green-800" : "bg-[#991b1b] border-red-800"
+          }`}
+        >
           <div className="flex items-center gap-2 mb-1 text-white">
             <AlertTriangle size={18} /> <span className="font-semibold">Shain</span>
           </div>
           <p className="text-sm">
-            {summary?.egresos > ingresos
-              ? 'Alerta: Los egresos están superando los ingresos.'
-              : 'Todo en orden: los ingresos superan los egresos.'}
+            {isOk
+              ? "Todo en orden: los ingresos superan (o igualan) los egresos."
+              : "Alerta: Los egresos están superando los ingresos."}
           </p>
           <p className="text-xs text-white/80 mt-1">Reporte del mes actual</p>
           <p className="text-xs text-white/60">
-            {summary?.egresos > ingresos
-              ? 'Se recomienda generar nuevos ingresos'
-              : 'Continúa con la estrategia actual'}
+            {isOk
+              ? "Continúa con la estrategia actual"
+              : "Se recomienda generar nuevos ingresos"}
           </p>
         </div>
       </div>
 
       {/* GRÁFICA */}
       <div className="bg-gradient-to-b from-[#0f172a] to-black rounded-xl border border-white/10 p-6 mb-6">
-        <h3 className="text-sm font-semibold mb-4">Ingresos vs Egresos (últimos 30 días)</h3>
-        {chartData.length > 0 ? (
-          <Chart data={chartData} />
-        ) : (
-          <p className="text-center text-white/60">📊 Sin datos disponibles</p>
-        )}
+        <h3 className="text-sm font-semibold mb-4">
+          Ingresos vs Egresos (últimos 30 días)
+        </h3>
+        <div className="bg-black/20 rounded-xl p-6">
+          {chartData.length > 0 ? <Chart data={chartData} /> : (
+            <p className="text-center text-white/60">📊 Sin datos disponibles</p>
+          )}
+        </div>
       </div>
 
       {/* Mini Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-10">
         <MiniCardChart
           title="Ingresos Totales"
-          value={`$${ingresos.toLocaleString()}`}
+          value={`$${Number(ingresos).toLocaleString()}`}
           percent={5}
           color="green"
+          icon={<TrendingUp size={14} />}
           data={chartData.map((d) => ({ value: d.Ingresos }))}
         />
         <MiniCardChart
           title="Gastos Totales"
-          value={`-$${(summary?.egresos || 0).toLocaleString()}`}
+          value={`-$${Number(egresos).toLocaleString()}`}
           percent={-15}
           color="red"
+          icon={<TrendingDown size={14} />}
           data={chartData.map((d) => ({ value: d.Egresos }))}
-        />
-        <MiniCardChart
-          title="Margen de beneficio"
-          value={`$${(ingresos - (summary?.egresos || 0)).toLocaleString()}`}
-          percent={21}
-          color="blue"
-          data={chartData.map((d) => ({ value: d.Ingresos - d.Egresos }))}
         />
       </div>
     </div>
   );
 };
+
+export default Finance;
