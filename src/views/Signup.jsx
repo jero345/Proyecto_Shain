@@ -222,7 +222,7 @@ export const Signup = () => {
               value={form.role}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`${inputBase} ${hasError('role') ? inputWithError : ''}`}
+              className={`w-full bg-purple-600 text-white border-2 border-purple-700 rounded-md py-2 px-4 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500 mt-2 transition ease-in-out duration-300 ${hasError('role') ? 'ring-2 ring-red-400 focus:ring-red-400' : ''}`}
             >
               <option value="">Seleccione un rol</option>
               <option value="barbero">Barbero</option>
