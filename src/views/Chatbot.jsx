@@ -3,7 +3,7 @@ import { MessageSquare, Bot } from 'lucide-react';
 import { axiosChatbot } from '@services/axiosclient'; // instancia con base .../api y withCredentials
 
 const DEFAULT_MESSAGES = [
-  { id: 1, date: 'Hoy', sender: 'bot', text: '¡Hola! Escribe "hola" para ver el menú.' }
+  { id: 1, date: 'Hoy', sender: 'bot', text: 'Hola 👋 ¿Quieres que te muestre cómo va el negocio?' }
 ];
 
 export const ChatBot = ({ userName = 'Usuario' }) => {
@@ -112,7 +112,7 @@ export const ChatBot = ({ userName = 'Usuario' }) => {
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-6 flex flex-col min-h-screen text-white">
       <h1 className="text-xl font-bold mb-4 flex items-center gap-3">
-        <MessageSquare className="w-5 h-5" /> ChatBot
+        <MessageSquare className="w-5 h-5" /> Agente Shain
       </h1>
 
       {/* Mensajes */}

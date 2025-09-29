@@ -20,6 +20,7 @@ export default defineConfig({
       '@routes': path.resolve(__dirname, 'src/routes'),
       '@context': path.resolve(__dirname, 'src/context'),
       '@admin': path.resolve(__dirname, 'src/admin'),
+       "@constant": path.resolve(__dirname, "src/constant"),
 
     },
   },

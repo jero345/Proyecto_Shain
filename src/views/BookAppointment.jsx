@@ -58,7 +58,7 @@ export const BookAppointment = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#a32063] via-[#4b1d69] to-[#0b0b2f] px-4 py-12 text-white">
       
       <h1 className="text-3xl md:text-4xl font-extrabold mb-10 text-center">
-        📅 Agenda tu Cita
+        📅 Agenda
       </h1>
 
       <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-12">
@@ -141,11 +141,11 @@ export const BookAppointment = () => {
             </div>
 
             <div>
-              <label className="block text-sm mb-1">📝 Descripción / Tipo de corte</label>
+              <label className="block text-sm mb-1">📝 Descripción </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ej. Corte degradado, barba..."
+                placeholder="Ej. Servicio, pendiente, venta…"
                 rows={4}
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               ></textarea>

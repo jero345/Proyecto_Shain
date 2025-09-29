@@ -118,7 +118,7 @@ export const Home = () => {
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <div className="flex items-center justify-between bg-[#421953]/80 p-6 rounded-xl border border-purple-700 shadow-md">
             <div>
-              <p className="text-sm text-green-200 mb-1">Balance del día</p>
+              <p className="text-sm text-green-200 mb-1">Total del día</p>
               <h2 className="text-4xl font-extrabold text-lime-300">
                 {balanceDay >= 0 ? `+$${Number(balanceDay).toLocaleString()}` : `-$${Math.abs(Number(balanceDay)).toLocaleString()}`}
               </h2>

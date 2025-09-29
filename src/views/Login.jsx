@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@auth/useAuth';
 import { loginRequest } from '@services/authService';
-import { ROLES } from '../constant/Roles';
+import { ROLES } from '../constant/roles';
 import loginImage from '@assets/fondo.png';
 import logo from '@assets/logo.png';
 

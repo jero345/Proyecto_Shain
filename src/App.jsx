@@ -1,5 +1,5 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useState } from "react";
 
 // Guards
@@ -14,7 +14,7 @@ import { Navbar } from "@components/Navbar";
 import { Login } from "@views/Login";
 import { Signup } from "@views/Signup";
 import { RecoverPassword } from "@views/RecoverPassword";
-import ResetPassword from "@auth/ResetPassword"; // ← nueva vista para cambiar contraseña
+import ResetPassword from "@auth/ResetPassword";
 import { TrialExpired } from "@views/TrialExpired";
 import { NotAuthorized } from "@views/NotAuthorized";
 
@@ -36,12 +36,8 @@ import AdminPanel from "@admin/AdminPanel";
 import { CreateTimeslots } from "@views/CreateTimeslots";
 
 import { useAuth } from "@auth/useAuth";
+import { ROLES } from "../src/constant/roles";  // Ajustar la ruta
 
-const ROLES = {
-  ADMIN: "admin",
-  OWNER: "propietario_negocio",
-  BARBERO: "barbero",
-};
 
 /** Rutas públicas que se bloquean si ya hay sesión */
 const PublicOnlyRoute = () => {
@@ -72,22 +68,22 @@ export default function App() {
   const [open, setOpen] = useState(false);
 
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        {/** ===================== PÚBLICAS (bloqueadas si hay sesión) ===================== */}
+        {/* ===================== PÚBLICAS (bloqueadas si hay sesión) ===================== */}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/recuperar-contraseña" element={<RecoverPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} /> {/* ← NUEVA */}
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/** ===================== PÚBLICAS SIEMPRE DISPONIBLES ===================== */}
+        {/* ===================== PÚBLICAS SIEMPRE DISPONIBLES ===================== */}
         <Route path="/trial-expired" element={<TrialExpired />} />
         <Route path="/no-autorizado" element={<NotAuthorized />} />
 
-        {/** ===================== PORTAL ADMIN (SOLO ADMIN) ===================== */}
+        {/* ===================== PORTAL ADMIN (SOLO ADMIN) ===================== */}
         <Route
           path="/portal-admin"
           element={
@@ -99,7 +95,7 @@ export default function App() {
           }
         />
 
-        {/** Admin: referidos fuera del dashboard */}
+        {/* Admin: referidos fuera del dashboard */}
         <Route
           path="/admin/referrals"
           element={
@@ -111,7 +107,7 @@ export default function App() {
           }
         />
 
-        {/** Admin: crear horarios (timeslots) */}
+        {/* Admin: crear horarios (timeslots) */}
         <Route
           path="/admin/timeslots"
           element={
@@ -123,18 +119,18 @@ export default function App() {
           }
         />
 
-        {/** ===================== DASHBOARD (PROTEGIDO + LAYOUT ÚNICO) ===================== */}
+        {/* ===================== DASHBOARD (PROTEGIDO + LAYOUT ÚNICO) ===================== */}
         <Route
           path="/dashboard"
           element={
             <PrivateRoute>
-              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.PROVIDER]}>
                 <DashboardShell open={open} setOpen={setOpen} />
               </RoleRoute>
             </PrivateRoute>
           }
         >
-          {/** Si un ADMIN entra a /dashboard, lo mandamos al portal de admin */}
+          {/* Si un ADMIN entra a /dashboard, lo mandamos al portal de admin */}
           <Route
             index
             element={
@@ -144,11 +140,11 @@ export default function App() {
             }
           />
 
-          {/** Home por defecto para barbero/owner */}
+          {/* Home por defecto para Provider/Owner */}
           <Route
             path="home"
             element={
-              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <Home />
               </RoleRoute>
             }
@@ -157,7 +153,7 @@ export default function App() {
           <Route
             path="finanzas"
             element={
-              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <Finance />
               </RoleRoute>
             }
@@ -166,7 +162,7 @@ export default function App() {
           <Route
             path="agregar-movimiento"
             element={
-              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <AddMovement />
               </RoleRoute>
             }
@@ -175,7 +171,7 @@ export default function App() {
           <Route
             path="chatbot"
             element={
-              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <ChatBot />
               </RoleRoute>
             }
@@ -184,7 +180,7 @@ export default function App() {
           <Route
             path="historial"
             element={
-              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <History />
               </RoleRoute>
             }
@@ -193,17 +189,17 @@ export default function App() {
           <Route
             path="notificaciones"
             element={
-              <RoleRoute roles={[ROLES.BARBERO, ROLES.OWNER]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <Notifications />
               </RoleRoute>
             }
           />
 
-          {/** Citas: solo barbero */}
+          {/* ======= Agenda y Citas: visibles para Prestador (y Owner) ======= */}
           <Route
             path="agendar-cita"
             element={
-              <RoleRoute roles={[ROLES.BARBERO]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <BookAppointment />
               </RoleRoute>
             }
@@ -211,17 +207,17 @@ export default function App() {
           <Route
             path="citas"
             element={
-              <RoleRoute roles={[ROLES.BARBERO]}>
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
                 <AppointmentsList />
               </RoleRoute>
             }
           />
 
-          {/** Configuración / Perfil (todos los roles) */}
+          {/* Configuración / Perfil (todos los roles) */}
           <Route
             path="configuraciones"
             element={
-              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.PROVIDER]}>
                 <Settings />
               </RoleRoute>
             }
@@ -229,7 +225,7 @@ export default function App() {
           <Route
             path="profile"
             element={
-              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.PROVIDER]}>
                 <Profile />
               </RoleRoute>
             }
@@ -237,13 +233,13 @@ export default function App() {
           <Route
             path="change-password"
             element={
-              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.BARBERO]}>
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.PROVIDER]}>
                 <ChangePassword />
               </RoleRoute>
             }
           />
 
-          {/** Dentro del dashboard: referidos solo admin */}
+          {/* Dentro del dashboard: referidos solo admin */}
           <Route
             path="referidos"
             element={
@@ -253,14 +249,14 @@ export default function App() {
             }
           />
 
-          {/** Fallback del dashboard */}
+          {/* Fallback del dashboard */}
           <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
         </Route>
 
-        {/** ===================== FALLBACK GLOBAL ===================== */}
+        {/* ===================== FALLBACK GLOBAL ===================== */}
         <Route path="/dashboard/*" element={<Navigate to="/dashboard/home" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }

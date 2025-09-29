@@ -164,10 +164,6 @@ export const Settings = () => {
         ⚙️ <span>Configuración</span>
       </div>
       <h1 className="text-3xl md:text-4xl font-extrabold">Información del negocio</h1>
-      <p className="text-white/60 mb-4">
-        Actualiza nombre, tipo, meta mensual, descripción y logo.
-      </p>
-
       <div className="flex flex-col md:flex-row md:items-start gap-10">
         {/* Logo + uploader */}
         <div className="flex flex-col gap-4">

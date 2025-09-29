@@ -14,6 +14,7 @@ const RECENT_KEY = (date) => `recentMovements:${date}`;
 const money = (n) => Number(n || 0).toLocaleString("es-CO");
 // compara por string para evitar líos de zona horaria
 const ymd = (d) => (d ? String(d).slice(0, 10) : null);
+const ymdSlash = (d) => (ymd(d) ? ymd(d).replaceAll("-", "/") : "");
 
 // cache utils
 const readCache = (k) => {
@@ -30,11 +31,17 @@ const writeCache = (k, v) => {
   } catch {}
 };
 
+// formateo de miles para el input (muestra con puntos pero guarda solo dígitos)
+const toDigits = (str) => (str || "").replace(/\D+/g, "");
+const formatThousands = (digits) =>
+  digits ? Number(digits).toLocaleString("es-CO") : "";
+
 export const AddMovement = () => {
   const [form, setForm] = useState({
     type: "ingreso",
-    frequencyType: "nuevo",
-    value: "",
+    // frequencyType ahora es OPCIONAL. Arranca vacío.
+    frequencyType: "",
+    value: "", // guardamos SOLO dígitos aquí
     description: "",
     date: getToday(),
   });
@@ -54,11 +61,9 @@ export const AddMovement = () => {
 
   // Cargar recientes de la fecha seleccionada (cache + revalidación)
   useEffect(() => {
-    // cache inmediato
     const cached = readCache(RECENT_KEY(form.date));
     if (cached?.length) setRecentMovements(cached);
 
-    // revalidar desde backend (pedimos 2 días por seguridad de TZ)
     const loadForDate = async () => {
       try {
         setLoadingRecent(true);
@@ -89,20 +94,56 @@ export const AddMovement = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // valor: mostrar con puntos, guardar dígitos
+    if (name === "value") {
+      const digits = toDigits(value);
+      setForm((prev) => ({ ...prev, value: digits }));
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Cambiar tipo (ingreso/egreso)
+  const toggleType = (type) => {
+    setForm((prev) => ({ ...prev, type }));
+  };
+
+  // Nuevo/Recurrente opcional: si clicas el activo, se des-selecciona
+  const toggleFrequency = (freq) => {
+    setForm((prev) => ({
+      ...prev,
+      frequencyType: prev.frequencyType === freq ? "" : freq,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validaciones mínimas
+    const valueNumber = Number(form.value || 0);
+    if (!valueNumber || valueNumber <= 0) {
+      alert("Ingresa un valor válido mayor que 0.");
+      return;
+    }
+
+    if (form.type === "egreso" && !String(form.description || "").trim()) {
+      alert("La descripción es obligatoria para un egreso.");
+      return;
+    }
+
     try {
       setLoading(true);
 
+      // construir payload: SIEMPRE enviar 'frecuencyType' ("" si no hay selección)
       const payload = {
         type: form.type,
-        frecuencyType: form.frequencyType, // backend espera 'frecuencyType'
-        value: form.value.toString(), // backend espera string
+        value: form.value.toString(), // enviamos solo dígitos como string
         description: form.description,
         date: form.date, // 'YYYY-MM-DD'
+        // el backend espera 'frecuencyType'
+        frecuencyType: form.frequencyType || "",
       };
 
       const response = await addMovementService(payload);
@@ -116,7 +157,6 @@ export const AddMovement = () => {
         date: saved.date ?? form.date,
       };
 
-      // Solo insertamos si pertenece a la fecha que se está viendo
       if (ymd(normalized.date) === form.date) {
         setRecentMovements((prev) => {
           const next = [normalized, ...prev].slice(0, 6);
@@ -125,10 +165,9 @@ export const AddMovement = () => {
         });
       }
 
-      // Reset (manteniendo la fecha seleccionada)
       const reset = {
-        type: "ingreso",
-        frequencyType: "nuevo",
+        type: form.type, // mantenemos el tipo actual seleccionado
+        frequencyType: "", // como es opcional, lo reiniciamos vacío
         value: "",
         description: "",
         date: form.date,
@@ -142,6 +181,8 @@ export const AddMovement = () => {
       setLoading(false);
     }
   };
+
+  const valueDisplay = formatThousands(form.value);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
@@ -159,7 +200,7 @@ export const AddMovement = () => {
               <button
                 type="button"
                 key={type}
-                onClick={() => setForm((prev) => ({ ...prev, type }))}
+                onClick={() => toggleType(type)}
                 className={`px-6 py-2 rounded-full text-sm font-semibold transition ${
                   form.type === type
                     ? type === "ingreso"
@@ -186,9 +227,11 @@ export const AddMovement = () => {
               />
             </div>
 
-            {/* Frecuencia (colores diferentes) */}
+            {/* Frecuencia (OPCIONAL) */}
             <div>
-              <label className="block text-sm mb-1">¿Qué tipo es?*</label>
+              <label className="block text-sm mb-1">
+                ¿Qué tipo es? <span className="opacity-70">(opcional)</span>
+              </label>
               <div className="flex items-center gap-4 mt-2">
                 {["nuevo", "recurrente"].map((freq) => {
                   const isActive = form.frequencyType === freq;
@@ -201,46 +244,69 @@ export const AddMovement = () => {
                     <button
                       type="button"
                       key={freq}
-                      onClick={() =>
-                        setForm((prev) => ({ ...prev, frequencyType: freq }))
-                      }
+                      onClick={() => toggleFrequency(freq)}
                       className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
                         isActive
                           ? activeCls
                           : "bg-transparent border-white/30 text-white/60 hover:border-white/50"
                       }`}
+                      title="Clic de nuevo para des-seleccionar"
                     >
                       {freq.charAt(0).toUpperCase() + freq.slice(1)}
                     </button>
                   );
                 })}
               </div>
+              <p className="text-xs text-white/60 mt-1">
+                Puedes dejarlo vacío si no aplica.
+              </p>
             </div>
           </div>
 
-          {/* Valor */}
+          {/* Valor (con puntos de miles) */}
           <div>
             <label className="block text-sm mb-1">Valor del movimiento*</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="value"
-              value={form.value}
+              value={valueDisplay}
               onChange={handleChange}
-              placeholder="$ 000.000,00"
+              placeholder="0"
               className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50"
+              required
             />
+            <p className="text-xs text-white/50 mt-1">
+              Se formatea automáticamente: 3000000 →{" "}
+              <span className="font-semibold">3.000.000</span>
+            </p>
           </div>
 
-          {/* Descripción */}
+          {/* Descripción (obligatoria si es egreso) */}
           <div>
-            <label className="block text-sm mb-1">Descripción</label>
+            <label className="block text-sm mb-1">
+              Descripción{form.type === "egreso" ? " *" : ""}
+            </label>
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
-              placeholder="Ej: Venta de producto, pago de factura..."
+              placeholder={
+                form.type === "egreso"
+                  ? "Describe el egreso (obligatorio)…"
+                  : "Ej: Venta de producto, pago de factura... (opcional)"
+              }
               className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50"
+              required={form.type === "egreso"}
+              aria-invalid={
+                form.type === "egreso" && !form.description ? true : undefined
+              }
             />
+            {form.type === "egreso" && (
+              <p className="text-xs text-red-300 mt-1">
+                La descripción es obligatoria para egresos.
+              </p>
+            )}
           </div>
 
           <button
@@ -265,15 +331,8 @@ export const AddMovement = () => {
         {/* Movimientos recientes para la fecha seleccionada */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">
-              Movimientos recientes — {form.date}
-            </h2>
-            <Link
-              to="/dashboard/historial"
-              className="text-sm underline text-white/70 hover:text-white"
-            >
-              Ver todo el historial
-            </Link>
+            <h2 className="text-xl font-bold">Movimientos recientes</h2>
+            <span className="text-sm text-white/70">{ymdSlash(form.date)}</span>
           </div>
 
           {loadingRecent && recentMovements.length === 0 ? (
@@ -318,7 +377,7 @@ export const AddMovement = () => {
                         {isIngreso ? "+" : "-"}${money(item.value)}
                       </p>
                       <p className="text-xs text-white/60">
-                        {ymd(item.date) || form.date}
+                        {ymdSlash(item.date) || ymdSlash(form.date)}
                       </p>
                     </div>
                   </li>
@@ -326,11 +385,19 @@ export const AddMovement = () => {
               })}
               {recentMovements.length === 0 && (
                 <li className="text-white/60">
-                  Sin movimientos para {form.date}.
+                  Sin movimientos para {ymdSlash(form.date)}.
                 </li>
               )}
             </ul>
           )}
+          <div className="mt-4">
+            <Link
+              to="/dashboard/historial"
+              className="text-sm underline text-white/70 hover:text-white"
+            >
+              Ver todo el historial
+            </Link>
+          </div>
         </div>
       </div>
     </div>

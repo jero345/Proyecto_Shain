@@ -1,3 +1,4 @@
+// src/views/NotAuthorized.jsx
 import { ShieldAlert, ArrowLeft, Home } from "lucide-react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 
@@ -36,8 +37,10 @@ export const NotAuthorized = () => {
             Volver
           </button>
 
+          {/* Ahora siempre va al login */}
           <Link
-            to="/dashboard/home"
+            to="/login"
+            replace
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:opacity-90 transition font-semibold"
           >
             <Home size={18} />
