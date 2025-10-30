@@ -19,6 +19,7 @@ export const Signup = () => {
     confirmPassword: '',
     acceptedTerms: false,
     referredByCode: '',
+    businessCode: '', // Inicializado como cadena vacía
   });
 
   const [errors, setErrors] = useState({});
@@ -59,17 +60,28 @@ export const Signup = () => {
     if (!values.password) e.password = 'Contraseña es obligatoria.';
     else if (values.password.length < 6) e.password = 'Mínimo 6 caracteres.';
     if (!values.confirmPassword) e.confirmPassword = 'Confirma tu contraseña.';
-    else if (values.password !== values.confirmPassword) e.confirmPassword = 'Las contraseñas no coinciden.';
-    if (!values.acceptedTerms) e.acceptedTerms = 'Debes aceptar los términos y condiciones.';
+    else if (values.password !== values.confirmPassword)
+      e.confirmPassword = 'Las contraseñas no coinciden.';
+    if (!values.acceptedTerms)
+      e.acceptedTerms = 'Debes aceptar los términos y condiciones.';
     if (values.referredByCode && !refRe.test(values.referredByCode.trim())) {
       e.referredByCode = 'Código inválido (4–16 caracteres alfanuméricos).';
     }
 
+    // Nota: ya no se obliga a businessCode; se mantiene sin validación cliente
     return e;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    // Si se cambia el rol y NO es prestador_servicios, limpiar businessCode
+    if (name === 'role') {
+      const newRole = value;
+      setForm(prev => ({ ...prev, role: newRole, businessCode: newRole !== 'prestador_servicios' ? '' : prev.businessCode }));
+      setErrors(prev => ({ ...prev, [name]: undefined, businessCode: undefined }));
+      setServerError('');
+      return;
+    }
     setField(name, type === 'checkbox' ? checked : value);
   };
 
@@ -111,6 +123,7 @@ export const Signup = () => {
         else if (lower.includes('usuario') || lower.includes('user')) newFieldErrors.username = message;
         else if (lower.includes('tel') || lower.includes('phone') || lower.includes('telefono')) newFieldErrors.phone = message;
         else if (lower.includes('contraseña') || lower.includes('password')) newFieldErrors.password = message;
+        else if (lower.includes('negocio')) newFieldErrors.businessCode = message;
         else if (lower.includes('refer')) newFieldErrors.referredByCode = message;
         else setServerError(message);
       }
@@ -129,35 +142,53 @@ export const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
-    const fieldErrors = validate(form);
+
+    // Normalizar valores del formulario: reemplaza undefined/null por '' y convierte a string cuando corresponda
+    const cleanedForm = { ...form };
+    Object.keys(cleanedForm).forEach((key) => {
+      if (cleanedForm[key] === undefined || cleanedForm[key] === null) {
+        cleanedForm[key] = '';
+      } else if (typeof cleanedForm[key] === 'boolean') {
+        // mantener booleanos (acceptedTerms) como booleanos
+      } else {
+        // forzar a string para evitar "received undefined expected string"
+        cleanedForm[key] = String(cleanedForm[key]);
+      }
+    });
+
+    // Validación de campos
+    const fieldErrors = validate(cleanedForm);
     if (Object.keys(fieldErrors).length) {
       setErrors(fieldErrors);
       return;
     }
 
+    // Construir payload normalizado: asegurar que businessCode siempre exista y acceptedTerms sea booleano
+    const payload = {
+      name: cleanedForm.name,
+      lastName: cleanedForm.lastName,
+      role: cleanedForm.role,
+      username: cleanedForm.username,
+      email: cleanedForm.email,
+      phone: cleanedForm.phone,
+      password: cleanedForm.password,
+      confirmPassword: cleanedForm.confirmPassword,
+      acceptedTerms: Boolean(cleanedForm.acceptedTerms),
+      referredByCode: cleanedForm.referredByCode || '',
+      businessCode: cleanedForm.businessCode || '', // siempre incluido
+    };
+
     try {
       setLoading(true);
-
-      const payload = {
-        name: form.name,
-        lastName: form.lastName,
-        role: form.role,
-        username: form.username,
-        email: form.email,
-        phone: form.phone,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
-        acceptedTerms: form.acceptedTerms,
-        referredByCode: form.referredByCode, // opcional
-      };
-
       const res = await registerRequest(payload);
 
       const token = res?.token || res?.data?.token || res?.accessToken || null;
-      if (token) { try { localStorage.setItem('token_shain', token); } catch {} }
+      if (token) {
+        try { localStorage.setItem('token_shain', token); } catch {} 
+      }
 
       alert('✅ Cuenta creada con éxito');
-      navigate('/'); // o al dashboard si prefieres autologin
+      navigate('/');
     } catch (err) {
       handleServerError(err);
     } finally {
@@ -225,10 +256,27 @@ export const Signup = () => {
               className={`w-full bg-purple-600 text-white border-2 border-purple-700 rounded-md py-2 px-4 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500 mt-2 transition ease-in-out duration-300 ${hasError('role') ? 'ring-2 ring-red-400 focus:ring-red-400' : ''}`}
             >
               <option value="">Seleccione un rol</option>
-              <option value="prestador_servicios">Prestador_de_servicios</option>
+              <option value="prestador_servicios">Profesional</option>
               <option value="propietario_negocio">Propietario de negocio</option>
             </select>
             {hasError('role') && <p className="text-red-300 text-xs -mt-2">{errors.role}</p>}
+
+            {/* Código del negocio: solo visible si se elige "Prestador de servicios" */}
+            {form.role === 'prestador_servicios' && (
+              <div>
+                <input
+                  name="businessCode"
+                  placeholder="Código del negocio"
+                  value={form.businessCode}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`${inputBase} ${hasError('businessCode') ? inputWithError : ''}`}
+                />
+                {hasError('businessCode') && (
+                  <p className="text-red-300 text-xs -mt-2">{errors.businessCode}</p>
+                )}
+              </div>
+            )}
 
             <input
               name="username"
@@ -261,7 +309,7 @@ export const Signup = () => {
             />
             {hasError('phone') && <p className="text-red-300 text-xs -mt-2">{errors.phone}</p>}
 
-            {/* Código de referido (opcional) */}
+            {/* Código de referido */}
             <div>
               <input
                 name="referredByCode"

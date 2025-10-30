@@ -77,3 +77,48 @@ export const getAllAppointmentsService = async () => {
     return [];
   }
 };
+
+
+/**
+ * Eliminar cita por ID
+ */
+export const deleteAppointmentService = async (id) => {
+  try {
+    const { data } = await axiosApi.delete(`/bookings/${id}`, {
+      withCredentials: true,
+    });
+    return data;
+  } catch (error) {
+    console.error('❌ Error al eliminar la cita:', error);
+    throw error?.response?.data || error;
+  }
+};
+
+/**
+ * Traer todas las citas con un filtro (today, currentMonth, all)
+ */
+export const getAppointmentsWithFilterService = async (filter) => {
+  try {
+    const { data } = await axiosApi.get(`/bookings`, {
+      params: { filter }, // today - month - all
+      withCredentials: true,
+    });
+
+    const list = data?.data ?? [];
+
+    // Normalizamos las citas para la UI
+    return list.map((a) => ({
+      id: a._id || a.id,
+      date: a.date || a.day || a.appointmentDate || null,
+      customerName: a.customerName || a.clientName || a.client || a.name || '',
+      description: a.description || a.notes || '',
+      timeSlotId: typeof a.timeSlot === 'string'
+        ? a.timeSlot
+        : a.timeSlot?._id || a.timeSlot?.id || null,
+      hour: a.hour || a.time || a.timeSlot?.hour || a.timeslot?.hour || null,
+    }));
+  } catch (error) {
+    console.error('❌ Error al obtener las citas con filtro:', error);
+    return [];
+  }
+};

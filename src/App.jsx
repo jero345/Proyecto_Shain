@@ -1,16 +1,17 @@
-// src/App.jsx
 import { HashRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@auth/useAuth";
+import { ROLES } from "../src/constant/roles";
 
-// Guards
+// 🔐 Guards
 import { PrivateRoute } from "@routes/PrivateRoute";
 import { RoleRoute } from "@routes/RoleRoute";
 
-// Layout
+// 🧭 Layout
 import { Navigation } from "@components/Navigation";
 import { Navbar } from "@components/Navbar";
 
-// Public views
+// 🌐 Public views
 import { Login } from "@views/Login";
 import { Signup } from "@views/Signup";
 import { RecoverPassword } from "@views/RecoverPassword";
@@ -18,7 +19,7 @@ import ResetPassword from "@auth/ResetPassword";
 import { TrialExpired } from "@views/TrialExpired";
 import { NotAuthorized } from "@views/NotAuthorized";
 
-// Protected views
+// 🔒 Protected views
 import { Home } from "@views/Home";
 import { Finance } from "@views/Finance";
 import { History } from "@views/History";
@@ -32,14 +33,12 @@ import { ChangePassword } from "@views/ChangePassword";
 import { AppointmentsList } from "@views/AppointmentsList";
 import { ReferralPanel } from "@views/ReferralPanel";
 import { AdminReferralPanel } from "@views/AdminReferralPanel";
-import AdminPanel from "@admin/AdminPanel";
 import { CreateTimeslots } from "@views/CreateTimeslots";
+import AdminPanel from "@admin/AdminPanel";
+import Employees from "@views/Employees";
+import EmployeeDetail from "@views/EmployeesDetail"; // ✅ corregido nombre del import
 
-import { useAuth } from "@auth/useAuth";
-import { ROLES } from "../src/constant/roles";  // Ajustar la ruta
-
-
-/** Rutas públicas que se bloquean si ya hay sesión */
+/** 🔓 Bloquea rutas públicas si el usuario ya tiene sesión */
 const PublicOnlyRoute = () => {
   const { user } = useAuth();
   if (!user) return <Outlet />;
@@ -49,7 +48,7 @@ const PublicOnlyRoute = () => {
     : <Navigate to="/dashboard/home" replace />;
 };
 
-/** Shell del dashboard para evitar repetir layout en rutas protegidas */
+/** 🧱 Shell del dashboard (Navbar + Sidebar + Outlet) */
 function DashboardShell({ open, setOpen }) {
   return (
     <>
@@ -70,7 +69,9 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* ===================== PÚBLICAS (bloqueadas si hay sesión) ===================== */}
+        {/* ===========================================================
+            🌐 RUTAS PÚBLICAS (bloqueadas si hay sesión)
+        =========================================================== */}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
@@ -79,47 +80,51 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
-        {/* ===================== PÚBLICAS SIEMPRE DISPONIBLES ===================== */}
+        {/* ===========================================================
+            🌍 RUTAS PÚBLICAS SIEMPRE DISPONIBLES
+        =========================================================== */}
         <Route path="/trial-expired" element={<TrialExpired />} />
         <Route path="/no-autorizado" element={<NotAuthorized />} />
 
-        {/* ===================== PORTAL ADMIN (SOLO ADMIN) ===================== */}
+        {/* ===========================================================
+            🛠️ ADMIN PANEL
+        =========================================================== */}
         <Route
           path="/portal-admin"
           element={
             <PrivateRoute>
-              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+              <RoleRoute roles={[ROLES.ADMIN]}>
                 <AdminPanel />
               </RoleRoute>
             </PrivateRoute>
           }
         />
 
-        {/* Admin: referidos fuera del dashboard */}
         <Route
           path="/admin/referrals"
           element={
             <PrivateRoute>
-              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+              <RoleRoute roles={[ROLES.ADMIN]}>
                 <AdminReferralPanel />
               </RoleRoute>
             </PrivateRoute>
           }
         />
 
-        {/* Admin: crear horarios (timeslots) */}
         <Route
           path="/admin/timeslots"
           element={
             <PrivateRoute>
-              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+              <RoleRoute roles={[ROLES.ADMIN]}>
                 <CreateTimeslots />
               </RoleRoute>
             </PrivateRoute>
           }
         />
 
-        {/* ===================== DASHBOARD (PROTEGIDO + LAYOUT ÚNICO) ===================== */}
+        {/* ===========================================================
+            💼 DASHBOARD (OWNER / PROVIDER / ADMIN)
+        =========================================================== */}
         <Route
           path="/dashboard"
           element={
@@ -130,7 +135,7 @@ export default function App() {
             </PrivateRoute>
           }
         >
-          {/* Si un ADMIN entra a /dashboard, lo mandamos al portal de admin */}
+          {/* 🔁 Redirección inicial */}
           <Route
             index
             element={
@@ -140,7 +145,7 @@ export default function App() {
             }
           />
 
-          {/* Home por defecto para Provider/Owner */}
+          {/* 🏠 Home */}
           <Route
             path="home"
             element={
@@ -150,6 +155,7 @@ export default function App() {
             }
           />
 
+          {/* 💰 Finanzas */}
           <Route
             path="finanzas"
             element={
@@ -158,7 +164,6 @@ export default function App() {
               </RoleRoute>
             }
           />
-
           <Route
             path="agregar-movimiento"
             element={
@@ -167,16 +172,6 @@ export default function App() {
               </RoleRoute>
             }
           />
-
-          <Route
-            path="chatbot"
-            element={
-              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
-                <ChatBot />
-              </RoleRoute>
-            }
-          />
-
           <Route
             path="historial"
             element={
@@ -186,6 +181,7 @@ export default function App() {
             }
           />
 
+          {/* 🔔 Notificaciones / Chat */}
           <Route
             path="notificaciones"
             element={
@@ -194,8 +190,34 @@ export default function App() {
               </RoleRoute>
             }
           />
+          <Route
+            path="chatbot"
+            element={
+              <RoleRoute roles={[ROLES.PROVIDER, ROLES.OWNER]}>
+                <ChatBot />
+              </RoleRoute>
+            }
+          />
 
-          {/* ======= Agenda y Citas: visibles para Prestador (y Owner) ======= */}
+          {/* 👥 Empleados (solo OWNER) */}
+          <Route
+            path="employees"
+            element={
+              <RoleRoute roles={[ROLES.OWNER]}>
+                <Employees />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="employees/:id"
+            element={
+              <RoleRoute roles={[ROLES.OWNER]}>
+                <EmployeeDetail />
+              </RoleRoute>
+            }
+          />
+
+          {/* 📅 Citas y agenda */}
           <Route
             path="agendar-cita"
             element={
@@ -213,11 +235,11 @@ export default function App() {
             }
           />
 
-          {/* Configuración / Perfil (todos los roles) */}
+          {/* ⚙️ Configuración y perfil */}
           <Route
             path="configuraciones"
             element={
-              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER, ROLES.PROVIDER]}>
+              <RoleRoute roles={[ROLES.ADMIN, ROLES.OWNER]}>
                 <Settings />
               </RoleRoute>
             }
@@ -239,22 +261,23 @@ export default function App() {
             }
           />
 
-          {/* Dentro del dashboard: referidos solo admin */}
+          {/* 🔗 Panel de referidos (solo ADMIN) */}
           <Route
             path="referidos"
             element={
-              <RoleRoute roles={[ROLES.ADMIN]} reason="admin-only">
+              <RoleRoute roles={[ROLES.ADMIN]}>
                 <ReferralPanel />
               </RoleRoute>
             }
           />
 
-          {/* Fallback del dashboard */}
+          {/* 🚨 Fallback dentro del dashboard */}
           <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
         </Route>
 
-        {/* ===================== FALLBACK GLOBAL ===================== */}
-        <Route path="/dashboard/*" element={<Navigate to="/dashboard/home" replace />} />
+        {/* ===========================================================
+            🚨 FALLBACK GLOBAL
+        =========================================================== */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

@@ -26,8 +26,7 @@ async function ensureClientToken(initialToken) {
       try { localStorage.setItem('token_shain', token); } catch {}
       return token;
     }
-  } catch (e) {
-  }
+  } catch (e) {}
   // 3) (Dev) Fuerza token dummy si lo definiste en .env
   if (FAKE_TOKEN) {
     try { localStorage.setItem('token_shain', FAKE_TOKEN); } catch {}
@@ -57,6 +56,7 @@ function stripEmpty(obj) {
   });
   return out;
 }
+
 /**
  * Normaliza y añade ALIAS por si el backend usa otros nombres:
  * - firstName (+ name, fullName)
@@ -116,11 +116,13 @@ function normalizeRegisterPayload(form) {
     referredBy: f.referredByCode || f.referredBy || undefined,
 
     role: f.role,
+
+    // Asegurar que businessCode nunca sea undefined, asignar cadena vacía por defecto
+    businessCode: f.businessCode || '',
   });
 
   return payload;
 }
-
 
 export const loginRequest = async (credentials) => {
   try {
@@ -136,6 +138,12 @@ export const loginRequest = async (credentials) => {
 
     // Asegura token en localStorage (body -> ok; si no, intenta canje/cookie)
     const finalToken = await ensureClientToken(token);
+
+    // Almacenar el ID del usuario en localStorage después de hacer login
+    const userId = res.data?.data?.id; // Asegúrate de que el ID está en la respuesta
+    if (userId) {
+      localStorage.setItem('user_id', userId); // Guardar el ID en el almacenamiento local
+    }
 
     return {
       status: res.data?.status ?? 'success',

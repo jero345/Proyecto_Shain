@@ -13,7 +13,7 @@ export const BookAppointment = () => {
   useEffect(() => {
     const fetchTimes = async () => {
       try {
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = date.toISOString().split('T')[0];  // Se asegura de obtener solo la fecha en formato YYYY-MM-DD
         const available = await getAvailableTimeslots(formattedDate);
         setAvailableTimes(available);
         setSelectedTimeId('');
@@ -33,7 +33,7 @@ export const BookAppointment = () => {
     }
 
     const newAppointment = {
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0],  // Este es el formato adecuado para la fecha
       timeSlot: selectedTimeId,
       customerName: clientName,
       description,
@@ -56,17 +56,11 @@ export const BookAppointment = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#a32063] via-[#4b1d69] to-[#0b0b2f] px-4 py-12 text-white">
-      
-      <h1 className="text-3xl md:text-4xl font-extrabold mb-10 text-center">
-        📅 Agenda
-      </h1>
-
+      <h1 className="text-3xl md:text-4xl font-extrabold mb-10 text-center">Agenda</h1>
       <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-12">
-        
         {/* 📌 Calendario + Horarios */}
         <div className="w-full lg:w-1/2 bg-white/10 rounded-2xl p-6 shadow-lg">
           <h2 className="text-xl font-semibold mb-6 text-center">Selecciona Fecha y Hora</h2>
-
           <Calendar
             onChange={setDate}
             value={date}
@@ -79,7 +73,6 @@ export const BookAppointment = () => {
                 : 'rounded-full text-white/80 hover:bg-white/20 transition'
             }
           />
-
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {availableTimes.map((slot) => {
               const isSelected = selectedTimeId === slot._id;
@@ -106,13 +99,12 @@ export const BookAppointment = () => {
         {/* 📌 Formulario */}
         <div className="w-full lg:w-1/2 bg-white/10 rounded-2xl p-6 shadow-lg">
           <h2 className="text-xl font-semibold mb-6 text-center">Completa tu Información</h2>
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm mb-1">📅 Fecha</label>
               <input
                 type="text"
-                value={date.toLocaleDateString()}
+                value={date.toLocaleDateString()}  // Muestra la fecha seleccionada en formato legible
                 readOnly
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               />
@@ -124,18 +116,16 @@ export const BookAppointment = () => {
                 type="text"
                 value={availableTimes.find((t) => t._id === selectedTimeId)?.label || ''}
                 readOnly
-                placeholder="Selecciona un horario"
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1">👤 Nombre del Cliente</label>
+              <label className="block text-sm mb-1">👤 Nombre</label>
               <input
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                placeholder="Ej. Juan Pérez"
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               />
             </div>
@@ -145,7 +135,6 @@ export const BookAppointment = () => {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ej. Servicio, pendiente, venta…"
                 rows={4}
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               ></textarea>

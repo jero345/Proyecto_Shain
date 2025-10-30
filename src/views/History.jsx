@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, ArrowDownRight, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Dialog } from "@headlessui/react";
 import {
   getMovementsService,
   deleteMovementService,
   updateMovementService,
-} from "@services/addmovementService";
-import { Dialog } from "@headlessui/react";
+} from "@services/addMovementService";
+import { useAuth } from "@context/AuthContext";
 
 /* ===== Helpers ===== */
 const getSafeId = (obj) => obj?.id ?? obj?._id;
@@ -30,6 +31,9 @@ const sortDescByDate = (a, b) => {
 };
 
 export const History = () => {
+  const { user } = useAuth();
+  const userId = user?._id || user?.id;
+
   const [movements, setMovements] = useState([]);
   const [filterType, setFilterType] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,13 +45,14 @@ export const History = () => {
 
   const [toast, setToast] = useState(null);
 
-  /* Cargar según filtro */
+  /* Cargar movimientos según el filtro y el usuario */
   useEffect(() => {
+    if (!userId) return;
+
     const fetchMovements = async () => {
       try {
-        const data = await getMovementsService(filterType);
+        const data = await getMovementsService(userId, filterType);
         const arr = Array.isArray(data) ? data : [];
-        // Normalizamos y ordenamos DESC al llegar
         setMovements([...arr].sort(sortDescByDate));
       } catch (err) {
         console.error("Error fetching movements", err);
@@ -57,8 +62,9 @@ export const History = () => {
         });
       }
     };
+
     fetchMovements();
-  }, [filterType]);
+  }, [filterType, userId]);
 
   /* Autocierre del toast */
   useEffect(() => {
@@ -168,7 +174,7 @@ export const History = () => {
             className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
               filterType === type
                 ? type === "todos"
-                  ? "bg-orange-500 text-white"
+                  ? "bg-black text-white"
                   : type === "ingreso"
                   ? "bg-white/10 border border-green-500 text-green-300"
                   : "bg-white/10 border border-red-500 text-red-300"
@@ -196,7 +202,9 @@ export const History = () => {
         </h3>
 
         {visibleMovements.length === 0 ? (
-          <p className="text-sm text-white/60">No se encontraron movimientos.</p>
+          <p className="text-sm text-white/60">
+            No se encontraron movimientos.
+          </p>
         ) : (
           <ul className="space-y-4">
             {visibleMovements.map((item) => {
@@ -223,12 +231,14 @@ export const History = () => {
                       <p className="text-sm font-semibold capitalize">
                         {isIngreso ? "Ingreso" : "Egreso"}
                       </p>
-                      <p className="text-xs text-white/50">{ymdSlash(item?.date)}</p>
+                      <p className="text-xs text-white/50">
+                        {ymdSlash(item?.date)}
+                      </p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <p className={`text-sm font-bold`}>
+                    <p className="text-sm font-bold">
                       {isIngreso ? "+" : "-"}${money(item?.value)}
                     </p>
                     <p className="text-xs text-white/50">

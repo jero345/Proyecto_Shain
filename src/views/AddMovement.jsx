@@ -2,21 +2,15 @@
 import { useState, useEffect } from "react";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import {
-  addMovementService,
-  getLastMovements,
-} from "@services/addMovementService";
+import { addMovementService, getLastMovements } from "@services/addMovementService";
 
 // helpers
-const getToday = () => new Date().toISOString().split("T")[0]; // 'YYYY-MM-DD'
+const getToday = () => new Date().toISOString().split("T")[0];
 const DRAFT_KEY = "addMovement:draft";
 const RECENT_KEY = (date) => `recentMovements:${date}`;
 const money = (n) => Number(n || 0).toLocaleString("es-CO");
-// compara por string para evitar líos de zona horaria
 const ymd = (d) => (d ? String(d).slice(0, 10) : null);
 const ymdSlash = (d) => (ymd(d) ? ymd(d).replaceAll("-", "/") : "");
-
-// cache utils
 const readCache = (k) => {
   try {
     const raw = localStorage.getItem(k);
@@ -30,8 +24,6 @@ const writeCache = (k, v) => {
     localStorage.setItem(k, JSON.stringify(v));
   } catch {}
 };
-
-// formateo de miles para el input (muestra con puntos pero guarda solo dígitos)
 const toDigits = (str) => (str || "").replace(/\D+/g, "");
 const formatThousands = (digits) =>
   digits ? Number(digits).toLocaleString("es-CO") : "";
@@ -39,9 +31,8 @@ const formatThousands = (digits) =>
 export const AddMovement = () => {
   const [form, setForm] = useState({
     type: "ingreso",
-    // frequencyType ahora es OPCIONAL. Arranca vacío.
     frequencyType: "",
-    value: "", // guardamos SOLO dígitos aquí
+    value: "",
     description: "",
     date: getToday(),
   });
@@ -50,7 +41,6 @@ export const AddMovement = () => {
   const [loading, setLoading] = useState(false);
   const [loadingRecent, setLoadingRecent] = useState(true);
 
-  // Hidrata borrador una sola vez al montar
   useEffect(() => {
     const draft = readCache(DRAFT_KEY);
     if (draft) {
@@ -59,7 +49,6 @@ export const AddMovement = () => {
     }
   }, []);
 
-  // Cargar recientes de la fecha seleccionada (cache + revalidación)
   useEffect(() => {
     const cached = readCache(RECENT_KEY(form.date));
     if (cached?.length) setRecentMovements(cached);
@@ -67,7 +56,7 @@ export const AddMovement = () => {
     const loadForDate = async () => {
       try {
         setLoadingRecent(true);
-        const list = await getLastMovements(2); // mezcla ingresos + egresos
+        const list = await getLastMovements(2);
         const onlySelected = (Array.isArray(list) ? list : [])
           .filter((m) => ymd(m.date) === form.date)
           .sort((a, b) =>
@@ -87,30 +76,24 @@ export const AddMovement = () => {
     loadForDate();
   }, [form.date]);
 
-  // Guardar borrador siempre
   useEffect(() => {
     writeCache(DRAFT_KEY, form);
   }, [form]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // valor: mostrar con puntos, guardar dígitos
     if (name === "value") {
       const digits = toDigits(value);
       setForm((prev) => ({ ...prev, value: digits }));
       return;
     }
-
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Cambiar tipo (ingreso/egreso)
   const toggleType = (type) => {
     setForm((prev) => ({ ...prev, type }));
   };
 
-  // Nuevo/Recurrente opcional: si clicas el activo, se des-selecciona
   const toggleFrequency = (freq) => {
     setForm((prev) => ({
       ...prev,
@@ -121,7 +104,6 @@ export const AddMovement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validaciones mínimas
     const valueNumber = Number(form.value || 0);
     if (!valueNumber || valueNumber <= 0) {
       alert("Ingresa un valor válido mayor que 0.");
@@ -135,14 +117,11 @@ export const AddMovement = () => {
 
     try {
       setLoading(true);
-
-      // construir payload: SIEMPRE enviar 'frecuencyType' ("" si no hay selección)
       const payload = {
         type: form.type,
-        value: form.value.toString(), // enviamos solo dígitos como string
+        value: form.value.toString(),
         description: form.description,
-        date: form.date, // 'YYYY-MM-DD'
-        // el backend espera 'frecuencyType'
+        date: form.date,
         frecuencyType: form.frequencyType || "",
       };
 
@@ -166,8 +145,8 @@ export const AddMovement = () => {
       }
 
       const reset = {
-        type: form.type, // mantenemos el tipo actual seleccionado
-        frequencyType: "", // como es opcional, lo reiniciamos vacío
+        type: form.type,
+        frequencyType: "",
         value: "",
         description: "",
         date: form.date,
@@ -186,7 +165,9 @@ export const AddMovement = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
-      <h1 className="text-3xl font-bold mb-2">Agregar Movimiento</h1>
+      <h1 className="text-3xl font-bold mb-2 text-center md:text-left">
+        Agregar Movimiento
+      </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Formulario */}
@@ -227,43 +208,44 @@ export const AddMovement = () => {
               />
             </div>
 
-            {/* Frecuencia (OPCIONAL) */}
-            <div>
-              <label className="block text-sm mb-1">
-                ¿Qué tipo es? <span className="opacity-70">(opcional)</span>
-              </label>
-              <div className="flex items-center gap-4 mt-2">
-                {["nuevo", "recurrente"].map((freq) => {
-                  const isActive = form.frequencyType === freq;
-                  const activeCls =
-                    freq === "nuevo"
-                      ? "bg-emerald-600 text-white border-emerald-500"
-                      : "bg-indigo-600 text-white border-indigo-500";
+            {/* Frecuencia SOLO visible si NO es egreso */}
+            {form.type !== "egreso" && (
+              <div>
+                <label className="block text-sm mb-1">
+                  ¿Qué tipo es? <span className="opacity-70">(opcional)</span>
+                </label>
+                <div className="flex items-center gap-4 mt-2">
+                  {["nuevo", "recurrente"].map((freq) => {
+                    const isActive = form.frequencyType === freq;
+                    const activeCls =
+                      freq === "nuevo"
+                        ? "bg-emerald-600 text-white border-emerald-500"
+                        : "bg-indigo-600 text-white border-indigo-500";
 
-                  return (
-                    <button
-                      type="button"
-                      key={freq}
-                      onClick={() => toggleFrequency(freq)}
-                      className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
-                        isActive
-                          ? activeCls
-                          : "bg-transparent border-white/30 text-white/60 hover:border-white/50"
-                      }`}
-                      title="Clic de nuevo para des-seleccionar"
-                    >
-                      {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        type="button"
+                        key={freq}
+                        onClick={() => toggleFrequency(freq)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
+                          isActive
+                            ? activeCls
+                            : "bg-transparent border-white/30 text-white/60 hover:border-white/50"
+                        }`}
+                      >
+                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-white/60 mt-1">
+                  Puedes dejarlo vacío si no aplica.
+                </p>
               </div>
-              <p className="text-xs text-white/60 mt-1">
-                Puedes dejarlo vacío si no aplica.
-              </p>
-            </div>
+            )}
           </div>
 
-          {/* Valor (con puntos de miles) */}
+          {/* Valor */}
           <div>
             <label className="block text-sm mb-1">Valor del movimiento*</label>
             <input
@@ -282,7 +264,7 @@ export const AddMovement = () => {
             </p>
           </div>
 
-          {/* Descripción (obligatoria si es egreso) */}
+          {/* Descripción */}
           <div>
             <label className="block text-sm mb-1">
               Descripción{form.type === "egreso" ? " *" : ""}
@@ -294,13 +276,10 @@ export const AddMovement = () => {
               placeholder={
                 form.type === "egreso"
                   ? "Describe el egreso (obligatorio)…"
-                  : "Ej: Venta de producto, pago de factura... (opcional)"
+                  : "Describe el movimiento (opcional)…"
               }
               className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder-white/50"
               required={form.type === "egreso"}
-              aria-invalid={
-                form.type === "egreso" && !form.description ? true : undefined
-              }
             />
             {form.type === "egreso" && (
               <p className="text-xs text-red-300 mt-1">
@@ -328,7 +307,7 @@ export const AddMovement = () => {
           </p>
         </form>
 
-        {/* Movimientos recientes para la fecha seleccionada */}
+        {/* Movimientos recientes */}
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Movimientos recientes</h2>
@@ -364,7 +343,7 @@ export const AddMovement = () => {
                           {isIngreso ? "Ingreso" : "Egreso"}
                         </p>
                         <p className="text-xs text-white/70">
-                          {item.description || "-"}
+                          {item.description || ""}
                         </p>
                       </div>
                     </div>

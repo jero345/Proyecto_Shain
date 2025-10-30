@@ -24,7 +24,6 @@ export const Settings = () => {
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
 
-  // 1) Cargar desde cache para pintar rápido
   useEffect(() => {
     const cached = localStorage.getItem('business');
     if (cached) {
@@ -36,7 +35,6 @@ export const Settings = () => {
     }
   }, []);
 
-  // 2) Fetch real — CORREGIDO (sin bucle)
   useEffect(() => {
     if (!userId) {
       setLoading(false);
@@ -44,7 +42,7 @@ export const Settings = () => {
       return;
     }
 
-    let ignore = false; // evita setState si el componente se desmonta
+    let ignore = false; 
 
     const fetchBusiness = async () => {
       try {
@@ -56,7 +54,6 @@ export const Settings = () => {
         setLogoPreview(data.image || '');
         localStorage.setItem('business', JSON.stringify(data));
 
-        // ✅ solo sincroniza al contexto si CAMBIÓ el logo
         const currentLogo = user?.logoUrl || '';
         if (data?.image && data.image !== currentLogo) {
           updateUser?.({ logoUrl: data.image, logoUpdatedAt: Date.now() });
@@ -76,10 +73,10 @@ export const Settings = () => {
       ignore = true;
     };
 
-    // ⚠️ Importante: dependemos SOLO de userId para evitar re-render loops.
-  }, [userId]); // <-- NO pongas updateUser aquí
+    
+  }, [userId]); 
 
-  // 3) Autocierre del toast
+  
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2200);
@@ -89,7 +86,7 @@ export const Settings = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'goal') {
-      const digits = value.replace(/[^\d]/g, ''); // solo números visibles
+      const digits = value.replace(/[^\d]/g, ''); 
       setBusiness((prev) => ({ ...prev, goal: digits }));
       return;
     }
@@ -127,7 +124,6 @@ export const Settings = () => {
       localStorage.setItem('business', JSON.stringify(merged));
       setToast({ type: 'success', message: 'Cambios guardados ✅' });
 
-      // ✅ refresca el avatar de Navbar inmediatamente SOLO si cambió
       const currentLogo = user?.logoUrl || '';
       if (merged?.image && merged.image !== currentLogo) {
         updateUser?.({ logoUrl: merged.image, logoUpdatedAt: Date.now() });
@@ -217,19 +213,18 @@ export const Settings = () => {
               className="w-full px-4 py-2 rounded-md bg-[#0b0f19] border border-white/10 text-white"
             />
             <p className="text-xs text-white/50 mt-1">
-              El backend la espera como string.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm mb-1">Descripción</label>
+            <label className="block text-sm mb-1">¿Porque esta meta importa para ti?</label>
             <textarea
               name="description"
               value={business.description}
               onChange={handleChange}
               rows={3}
               className="w-full px-4 py-2 rounded-md bg-[#0b0f19] border border-white/10 text-white"
-              placeholder="Describe tu negocio…"
+              placeholder=""
             />
           </div>
 

@@ -1,4 +1,3 @@
-// src/components/Navigation.jsx
 import {
   Home,
   BarChart2,
@@ -29,12 +28,15 @@ const ALL_ITEMS = [
   { icon: <FileText size={20} />, label: "Historial", to: "/dashboard/historial", roles: [ROLES.PROVIDER, ROLES.OWNER] },
   { icon: <Bell size={20} />, label: "Notificaciones", to: "/dashboard/notificaciones", roles: [ROLES.PROVIDER, ROLES.OWNER] },
 
+  // ✅ Solo OWNER
+  { icon: <Users size={20} />, label: "Equipo", to: "/dashboard/employees", roles: [ROLES.OWNER] },
+
   // Agenda / Citas
   { icon: <CalendarClock size={20} />, label: "Agendar Citas", to: "/dashboard/agendar-cita", roles: [ROLES.PROVIDER, ROLES.OWNER] },
   { icon: <ClipboardList size={20} />, label: "Citas Agendadas", to: "/dashboard/citas", roles: [ROLES.PROVIDER, ROLES.OWNER] },
 
   // Configuraciones (todos)
-  { icon: <SettingsIcon size={20} />, label: "Configuraciones", to: "/dashboard/configuraciones", roles: [ROLES.ADMIN, ROLES.OWNER, ROLES.PROVIDER] },
+  { icon: <SettingsIcon size={20} />, label: "Configuraciones", to: "/dashboard/configuraciones", roles: [ROLES.ADMIN, ROLES.OWNER] },
 
   // Solo admin
   { icon: <ShieldCheck size={20} />, label: "Portal Admin", to: "/portal-admin", roles: [ROLES.ADMIN] },
@@ -44,8 +46,9 @@ const ALL_ITEMS = [
 export const Navigation = ({ open, setOpen }) => {
   const location = useLocation();
   const { user } = useAuth() || {};
-  const role = user?.role; // ya viene normalizado por AuthContext
+  const role = user?.role; // Ya viene normalizado por AuthContext
 
+  // Filtramos según el rol actual
   const navItems = useMemo(
     () => ALL_ITEMS.filter((item) => role && item.roles.includes(role)),
     [role]
@@ -56,11 +59,12 @@ export const Navigation = ({ open, setOpen }) => {
 
   return (
     <>
-      {/* Desktop */}
+      {/* ========= DESKTOP ========= */}
       <aside className="hidden lg:flex h-screen w-60 bg-[#242222] text-white flex-col py-6 px-4 fixed">
         <div className="flex items-center justify-between mb-10">
           <img src={logo} alt="Logo Shain" className="w-7 h-7 object-contain" />
         </div>
+
         <nav className="flex flex-col gap-6">
           {navItems.map((item) => (
             <Link
@@ -77,7 +81,7 @@ export const Navigation = ({ open, setOpen }) => {
         </nav>
       </aside>
 
-      {/* Mobile */}
+      {/* ========= MOBILE ========= */}
       {open && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
@@ -89,10 +93,14 @@ export const Navigation = ({ open, setOpen }) => {
           >
             <div className="flex items-center justify-between mb-10">
               <img src={logo} alt="Logo Shain" className="w-7 h-7 object-contain" />
-              <button className="text-zinc-400 hover:text-white" onClick={() => setOpen(false)}>
+              <button
+                className="text-zinc-400 hover:text-white"
+                onClick={() => setOpen(false)}
+              >
                 <X size={20} />
               </button>
             </div>
+
             <nav className="flex flex-col gap-6">
               {navItems.map((item) => (
                 <Link

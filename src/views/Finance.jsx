@@ -3,10 +3,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, BarChart } from "lucide-react";
 import { Chart } from "@components/Chart";
 import { MiniCardChart } from "@components/MiniCardChart";
-import {
-  getFinanceSummary,
-  getLastMovements,
-} from "@services/financeService";
+import { getFinanceSummary, getLastMovements, getBusinessFinanceSummary } from "@services/financeService";
 import { getBusinessByUser } from "@services/businessService";
 import { useAuth } from "@context/AuthContext";
 import { TrendingUp, TrendingDown } from "lucide-react";
@@ -19,7 +16,8 @@ export const Finance = () => {
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [goal, setGoal] = useState(5000); // se actualizará con la meta del negocio
+  const [goal, setGoal] = useState(5000); // Se actualizará con la meta del negocio
+  const [businessId, setBusinessId] = useState(null); // Guardamos el businessId
 
   const todayDate = new Date().toISOString().split("T")[0];
 
@@ -35,7 +33,7 @@ export const Finance = () => {
     (Array.isArray(movements) ? movements : []).forEach((m) => {
       const date = new Date(m.date).toLocaleDateString("es-CO");
       if (!grouped[date]) grouped[date] = { date, Ingresos: 0, Egresos: 0 };
-      // normaliza tipos
+      // Normaliza tipos
       const t = (m.type || "").toLowerCase();
       if (t === "ingreso") grouped[date].Ingresos += Number(m.value) || 0;
       if (t === "egreso") grouped[date].Egresos += Number(m.value) || 0;
@@ -66,8 +64,11 @@ export const Finance = () => {
         if (ignore) return;
         if (business?.goal != null) {
           setGoal(parseGoal(business.goal));
+          setBusinessId(business.id); // Guardamos el businessId
         }
-      } catch {}
+      } catch (error) {
+        console.error('❌ Error al cargar la meta del negocio:', error);
+      }
     };
     loadGoal();
 
@@ -78,7 +79,9 @@ export const Finance = () => {
           if (parsed?.goal != null) {
             setGoal(parseGoal(parsed.goal));
           }
-        } catch {}
+        } catch (error) {
+          console.error('❌ Error al parsear los datos del negocio', error);
+        }
       }
     };
     window.addEventListener("storage", onStorage);
@@ -116,8 +119,23 @@ export const Finance = () => {
       }
     };
 
-    fetchData();
-  }, [todayDate]);
+    if (businessId) {
+      getBusinessFinanceSummary(businessId)
+        .then((businessSummary) => {
+          if (businessSummary) {
+            setSummary((prevSummary) => ({
+              ...prevSummary,
+              goal: businessSummary.goal,
+            }));
+          }
+        })
+        .catch((error) => {
+          console.error("❌ Error al obtener resumen del negocio:", error);
+        });
+    }
+
+    fetchData(); // Ejecutamos la función asíncrona
+  }, [todayDate, businessId]);
 
   if (loading) {
     return (
