@@ -82,46 +82,46 @@ export default function Employees() {
                 onClick={() =>
                   navigate(`/dashboard/employees/${emp._id || emp.id}`)
                 }
-                className="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 p-5"
+                className="cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-md hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 border border-slate-700 hover:border-purple-500 p-5"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-800">
+                    <h2 className="text-lg font-semibold text-white">
                       {emp.name || "Sin nombre"} {emp.lastName || ""}
                     </h2>
-                    <p className="text-sm text-gray-500 capitalize">
+                    <p className="text-sm text-slate-400 capitalize">
                       {emp.role || "Sin rol"}
                     </p>
                   </div>
-                  <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-medium">
+                  <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-md font-medium border border-purple-500/30">
                     {emp.businessCode }
                   </span>
                 </div>
 
-                <div className="text-sm text-gray-700 space-y-1 mb-4">
+                <div className="text-sm text-slate-300 space-y-1 mb-4">
                   <p>
-                    <strong>Correo:</strong>{" "}
+                    <strong className="text-slate-400">Correo:</strong>{" "}
                     {emp.email || "Sin correo registrado"}
                   </p>
                   <p>
-                    <strong>Ingresos:</strong>{" "}
-                    <span className="text-green-600 font-semibold">
+                    <strong className="text-slate-400">Ingresos:</strong>{" "}
+                    <span className="text-emerald-400 font-semibold">
                       ${ingresos.toLocaleString("es-CO")}
                     </span>
                   </p>
                   <p>
-                    <strong>Egresos:</strong>{" "}
-                    <span className="text-red-600 font-semibold">
+                    <strong className="text-slate-400">Egresos:</strong>{" "}
+                    <span className="text-rose-400 font-semibold">
                       ${egresos.toLocaleString("es-CO")}
                     </span>
                   </p>
                 </div>
 
                 <div
-                  className={`rounded-lg p-3 text-center font-semibold ${
+                  className={`rounded-lg p-3 text-center font-semibold border ${
                     balance >= 0
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : "bg-rose-500/10 text-rose-400 border-rose-500/30"
                   }`}
                 >
                   Balance: ${balance.toLocaleString("es-CO")}

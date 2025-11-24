@@ -13,7 +13,6 @@ export const Chart = ({ data }) => {
   return (
     <div className="bg-white/5 rounded-xl p-4 mb-6">
       <h3 className="text-sm font-semibold mb-4">
-        Ingresos vs Egresos (últimos 30 días)
       </h3>
       <ResponsiveContainer width="100%" height={350}>
         <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>

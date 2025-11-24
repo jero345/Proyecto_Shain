@@ -26,7 +26,6 @@ const ALL_ITEMS = [
   { icon: <PlusCircle size={20} />, label: "Agregar movimientos", to: "/dashboard/agregar-movimiento", roles: [ROLES.PROVIDER, ROLES.OWNER] },
   { icon: <MessageCircle size={20} />, label: "ShainBot", to: "/dashboard/chatbot", roles: [ROLES.PROVIDER, ROLES.OWNER] },
   { icon: <FileText size={20} />, label: "Historial", to: "/dashboard/historial", roles: [ROLES.PROVIDER, ROLES.OWNER] },
-  { icon: <Bell size={20} />, label: "Notificaciones", to: "/dashboard/notificaciones", roles: [ROLES.PROVIDER, ROLES.OWNER] },
 
   // ✅ Solo OWNER
   { icon: <Users size={20} />, label: "Equipo", to: "/dashboard/employees", roles: [ROLES.OWNER] },

@@ -86,6 +86,14 @@ export const updateMovementService = async (id, data) =>
 export const deleteMovementService = async (id) =>
   axiosApi.delete(`/movements/${id}`, { withCredentials: true });
 
+/**
+ * Obtener los movimientos de un negocio (propietario)
+ * @param {string} businessId - ID del negocio
+ * @param {string} type - Tipo de movimiento ('ingreso' | 'egreso')
+ * @param {string} filterDate - Filtro de fecha (sevenDays, month, quarter, year, all)
+ * @returns {Promise<any>} Los movimientos del negocio
+ */
+
 export const getMovementsForBusinessOwner = async (businessId, type = "", filterDate = "all") => {
   if (!businessId) throw new Error("businessId requerido para obtener movimientos");
 
@@ -93,6 +101,7 @@ export const getMovementsForBusinessOwner = async (businessId, type = "", filter
   const res = await axiosApi.get(url, { withCredentials: true });
   return res.data?.data ?? [];
 };
+
 /**
  * Obtener los movimientos de un prestador de servicio
  * @param {string} userId - ID del usuario
@@ -106,4 +115,49 @@ export const getMovementsForServiceProvider = async (userId, type = "", filterDa
   const url = `/movements/user/${userId}?type=${type}&filterDate=${filterDate}`;
   const res = await axiosApi.get(url, { withCredentials: true });
   return res.data?.data ?? [];
+};
+
+/**
+ * Obtener el resumen diario del dashboard
+ * Endpoint: GET /api/movements/summary/691d0d44f0aab1a15cf96664
+ * Incluye: dailyBalance, totalTransactionsDay, totalTransactionsMonth, monthBalance, calculationSales
+ * @returns {Promise<any>} Resumen completo del día y mes
+ */
+export const getDailySummaryService = async () => {
+  console.log('📊 Solicitando resumen diario al backend...');
+  
+  try {
+    const userId = localStorage.getItem('user_id');
+    const businessId = localStorage.getItem('business_id');
+    const id = userId || businessId;
+
+    if (!id) {
+      throw new Error('No se encontró el ID del usuario o negocio');
+    }
+
+    // La URL es fija, sin parámetros de fecha
+    const url = `/movements/summary/${id}`;
+
+    console.log('🔗 URL:', url);
+
+    const res = await axiosApi.get(url, {
+      withCredentials: true,
+    });
+
+    console.log('✅ Respuesta completa del backend:', res.data);
+    
+    // Retornamos directamente res.data.data
+    if (res.data && res.data.data) {
+      console.log('✅ Datos del resumen:', res.data.data);
+      return res.data.data;
+    }
+    
+    // Fallback por si la estructura es diferente
+    console.warn('⚠️ Estructura inesperada, retornando res.data');
+    return res.data;
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo resumen diario:', error);
+    throw error;
+  }
 };

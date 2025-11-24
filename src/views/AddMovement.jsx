@@ -165,7 +165,7 @@ export const AddMovement = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
-      <h1 className="text-3xl font-bold mb-2 text-center md:text-left">
+      <h1 className="text-3xl font-bold mb-2 text-center md:text-left hidden sm:block">
         Agregar Movimiento
       </h1>
 

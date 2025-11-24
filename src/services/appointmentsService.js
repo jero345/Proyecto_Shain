@@ -45,35 +45,62 @@ export const bookAppointmentService = async (appointment) => {
  * (Si tu backend usa otro nombre de parámetro, cambia "populate" por include/expand/etc.)
  */
 export const getAllAppointmentsService = async () => {
+  console.log('🚀 FUNCIÓN getAllAppointmentsService INICIADA');
+  
   try {
+    console.log('🔍 Solicitando citas al backend...');
+    
     const res = await axiosApi.get('/bookings', {
-      params: { populate: 'timeSlot' }, // <= ajusta si tu API usa otro nombre
       withCredentials: true,
     });
 
-    const list = pick(res) ?? [];
+    console.log('📦 Respuesta completa del backend:', res);
+    console.log('📊 Data cruda:', res.data);
 
-    // Normalizamos para la UI
-    return list.map((a) => ({
-      id: a._id || a.id,
-      date: a.date || a.day || a.appointmentDate || null,
-      customerName: a.customerName || a.clientName || a.client || a.name || '',
-      description: a.description || a.notes || '',
-      timeSlotId:
-        typeof a.timeSlot === 'string'
-          ? a.timeSlot
-          : a.timeSlot?._id || a.timeSlot?.id || null,
-      // Hora robusta: usa la del timeSlot poblado si viene
-      hour:
-        a.hour ||
-        a.time ||
-        a.timeSlot?.hour ||
-        a.timeslot?.hour ||
-        (typeof a.timeSlot === 'string' ? null : a.timeSlot?.hour) ||
-        null,
-    }));
+    const list = pick(res) ?? [];
+    
+    console.log('📋 Lista extraída (después de pick):', list);
+    console.log('📏 Cantidad de citas:', list.length);
+
+    // Normalizamos para la UI según la estructura real del backend
+    const normalized = list.map((a, index) => {
+      console.log(`\n--- 🔎 Procesando cita ${index + 1} ---`);
+      console.log('Raw appointment:', a);
+      console.log('  · _id:', a._id);
+      console.log('  · id:', a.id);
+      console.log('  · date:', a.date);
+      console.log('  · customerName:', a.customerName);
+      console.log('  · description:', a.description);
+      console.log('  · timeSlot:', a.timeSlot);
+      
+      // Extraer hora del timeSlot (que es un objeto)
+      let hour = null;
+      if (a.timeSlot && typeof a.timeSlot === 'object' && a.timeSlot.hour) {
+        hour = a.timeSlot.hour;
+        console.log('  · hora extraída de timeSlot.hour:', hour);
+      }
+
+      const normalized = {
+        _id: a._id,
+        id: a.id || a._id,
+        date: a.date,
+        customerName: a.customerName || '',
+        description: a.description || '',
+        timeSlotId: a.timeSlot?._id || a.timeSlot?.id || null,
+        hour: hour, // Hora extraída del objeto timeSlot
+      };
+
+      console.log('✅ Normalizada:', normalized);
+      return normalized;
+    });
+
+    console.log('\n📦 RESULTADO FINAL (todas las citas normalizadas):', normalized);
+    console.log('📊 Total de citas procesadas:', normalized.length);
+
+    return normalized;
   } catch (error) {
     console.error('❌ Error al obtener las citas:', error);
+    console.error('❌ Error completo:', error.response || error);
     return [];
   }
 };

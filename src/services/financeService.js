@@ -55,27 +55,26 @@ export const getLastMovements = async (days = 30) => {
   }
 };
 
+
+
+
 // Resumen de finanzas del negocio
-export const getBusinessFinanceSummary = async (businessId) => {
+export const getBusinessFinanceSummary = async (businessId, type) => {
   try {
-    const { data } = await axiosApi.get(`/movements/business/${businessId}`, {
-      withCredentials: true,
-    });
+    const { data } = await axiosApi.get(
+      `/movements/business/${businessId}?type=${type}`,
+      {
+        withCredentials: true,
+      }
+    );
 
-    const d = data?.data;
-    if (!d) return null;
+    console.log(`📦 Respuesta completa de ${type}:`, data);
 
-    const incomesMonth = d.totalTransactionsMonth?.incomes ?? 0;
-    const expensesMonth = d.totalTransactionsMonth?.expenses ?? 0;
+    // El backend devuelve el array en data.data
+    return data?.data || [];
 
-    return {
-      ingresos: incomesMonth,
-      egresos: expensesMonth,
-      balanceMonth: d.monthBalance ?? (incomesMonth - expensesMonth),
-      goal: d.goal ?? 0,
-    };
   } catch (error) {
-    console.error("❌ Error al obtener resumen financiero del negocio:", error);
-    throw error.response?.data || error;
+    console.error(`❌ Error al obtener ${type}:`, error);
+    return [];
   }
 };

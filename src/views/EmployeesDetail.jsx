@@ -94,24 +94,24 @@ export default function EmployeeDetail() {
       <p className="text-white/80 mb-6 capitalize">{employee.role}</p>
 
       {/* --- Historial de movimientos --- */}
-      <div className="bg-white rounded-xl p-5 shadow-sm mb-6 text-gray-800">
-        <h2 className="font-semibold text-lg mb-3">Historial de movimientos</h2>
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-5 shadow-md border border-slate-700 mb-6">
+        <h2 className="font-semibold text-lg mb-3 text-white">Historial de movimientos</h2>
 
         {movements.length === 0 ? (
-          <p className="text-gray-500 text-sm">No hay movimientos registrados.</p>
+          <p className="text-slate-400 text-sm">No hay movimientos registrados.</p>
         ) : (
           <div className="space-y-2">
             {movements.map((m) => (
               <div
                 key={m._id || m.id}
-                className="flex justify-between items-center border rounded-md p-3 text-sm"
+                className="flex justify-between items-center border border-slate-700 rounded-md p-3 text-sm bg-slate-800/50 hover:bg-slate-800 transition-colors"
               >
-                <span>{m.description || m.desc || "Sin descripción"}</span>
+                <span className="text-slate-300">{m.description || m.desc || "Sin descripción"}</span>
                 <span
                   className={
                     m.type === "ingreso"
-                      ? "text-green-600 font-semibold"
-                      : "text-red-600 font-semibold"
+                      ? "text-emerald-400 font-semibold"
+                      : "text-rose-400 font-semibold"
                   }
                 >
                   {m.type === "ingreso" ? "+" : "-"}$
@@ -124,28 +124,28 @@ export default function EmployeeDetail() {
       </div>
 
       {/* --- Resumen financiero --- */}
-      <div className="bg-white rounded-xl p-5 shadow-sm text-gray-800">
-        <h2 className="font-semibold text-lg mb-3">Balance total</h2>
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-5 shadow-md border border-slate-700">
+        <h2 className="font-semibold text-lg mb-3 text-white">Balance total</h2>
         <div className="flex flex-col sm:flex-row justify-between text-sm gap-2">
-          <p>
-            <strong>Total de ingresos:</strong>{" "}
-            <span className="text-green-600">
+          <p className="text-slate-300">
+            <strong className="text-slate-400">Total de ingresos:</strong>{" "}
+            <span className="text-emerald-400 font-semibold">
               ${totalIngresos.toLocaleString("es-CO")}
             </span>
           </p>
-          <p>
-            <strong>Total de egresos:</strong>{" "}
-            <span className="text-red-600">
+          <p className="text-slate-300">
+            <strong className="text-slate-400">Total de egresos:</strong>{" "}
+            <span className="text-rose-400 font-semibold">
               ${totalEgresos.toLocaleString("es-CO")}
             </span>
           </p>
-          <p>
-            <strong>Balance mensual:</strong>{" "}
+          <p className="text-slate-300">
+            <strong className="text-slate-400">Balance mensual:</strong>{" "}
             <span
               className={
                 (summary.monthBalance ?? totalIngresos - totalEgresos) >= 0
-                  ? "text-green-600"
-                  : "text-red-600"
+                  ? "text-emerald-400 font-semibold"
+                  : "text-rose-400 font-semibold"
               }
             >
               ${(
