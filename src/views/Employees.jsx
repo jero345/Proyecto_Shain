@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getEmployees } from "@services/employeesService";
+import { axiosApi } from "@services/axiosclient";
 
 export default function Employees() {
   const navigate = useNavigate();
@@ -15,9 +16,46 @@ export default function Employees() {
 
       try {
         const data = await getEmployees();
-        if (!data.length) setError("No hay empleados registrados actualmente.");
-        setEmployees(data);
+        if (!data.length) {
+          setError("No hay empleados registrados actualmente.");
+          setEmployees([]);
+          setLoading(false);
+          return;
+        }
+
+        // Obtener el summary de cada empleado
+        const employeesWithSummary = await Promise.all(
+          data.map(async (emp) => {
+            try {
+              const summaryRes = await axiosApi.get(
+                `movements/summary/${emp._id || emp.id}`,
+                { withCredentials: true }
+              );
+              const summary = summaryRes?.data?.data || summaryRes?.data || {};
+              
+              console.log(`📊 Summary de ${emp.name}:`, summary);
+              
+              return { ...emp, summary };
+            } catch (err) {
+              console.error(`❌ Error obteniendo summary para ${emp.name}:`, err);
+              return { 
+                ...emp, 
+                summary: { 
+                  totalTransactionsMonth: {
+                    incomes: 0,
+                    expenses: 0
+                  },
+                  monthBalance: 0
+                } 
+              };
+            }
+          })
+        );
+
+        console.log("👥 Empleados con summary cargados:", employeesWithSummary);
+        setEmployees(employeesWithSummary);
       } catch (err) {
+        console.error("❌ Error cargando empleados:", err);
         setError(err.message || "Error al cargar los empleados.");
       } finally {
         setLoading(false);
@@ -72,9 +110,10 @@ export default function Employees() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {employees.map((emp, index) => {
-            const ingresos = emp.ingresos ?? 0;
-            const egresos = emp.egresos ?? 0;
-            const balance = ingresos - egresos;
+            // Extraer datos de la estructura correcta
+            const totalIngresos = emp.summary?.totalTransactionsMonth?.incomes ?? 0;
+            const totalEgresos = emp.summary?.totalTransactionsMonth?.expenses ?? 0;
+            const balance = emp.summary?.monthBalance ?? (totalIngresos - totalEgresos);
 
             return (
               <div
@@ -94,7 +133,7 @@ export default function Employees() {
                     </p>
                   </div>
                   <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-md font-medium border border-purple-500/30">
-                    {emp.businessCode }
+                    {emp.businessCode}
                   </span>
                 </div>
 
@@ -104,15 +143,15 @@ export default function Employees() {
                     {emp.email || "Sin correo registrado"}
                   </p>
                   <p>
-                    <strong className="text-slate-400">Ingresos:</strong>{" "}
+                    <strong className="text-slate-400">Total de ingresos:</strong>{" "}
                     <span className="text-emerald-400 font-semibold">
-                      ${ingresos.toLocaleString("es-CO")}
+                      ${totalIngresos.toLocaleString("es-CO")}
                     </span>
                   </p>
                   <p>
-                    <strong className="text-slate-400">Egresos:</strong>{" "}
+                    <strong className="text-slate-400">Total de egresos:</strong>{" "}
                     <span className="text-rose-400 font-semibold">
-                      ${egresos.toLocaleString("es-CO")}
+                      ${totalEgresos.toLocaleString("es-CO")}
                     </span>
                   </p>
                 </div>
@@ -124,7 +163,7 @@ export default function Employees() {
                       : "bg-rose-500/10 text-rose-400 border-rose-500/30"
                   }`}
                 >
-                  Balance: ${balance.toLocaleString("es-CO")}
+                  Balance mensual: ${balance.toLocaleString("es-CO")}
                 </div>
               </div>
             );

@@ -5,25 +5,17 @@ import { Link } from "react-router-dom";
 import { addMovementService, getLastMovements } from "@services/addMovementService";
 
 // helpers
-const getToday = () => new Date().toISOString().split("T")[0];
-const DRAFT_KEY = "addMovement:draft";
-const RECENT_KEY = (date) => `recentMovements:${date}`;
+const getToday = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const money = (n) => Number(n || 0).toLocaleString("es-CO");
 const ymd = (d) => (d ? String(d).slice(0, 10) : null);
 const ymdSlash = (d) => (ymd(d) ? ymd(d).replaceAll("-", "/") : "");
-const readCache = (k) => {
-  try {
-    const raw = localStorage.getItem(k);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-const writeCache = (k, v) => {
-  try {
-    localStorage.setItem(k, JSON.stringify(v));
-  } catch {}
-};
 const toDigits = (str) => (str || "").replace(/\D+/g, "");
 const formatThousands = (digits) =>
   digits ? Number(digits).toLocaleString("es-CO") : "";
@@ -41,18 +33,8 @@ export const AddMovement = () => {
   const [loading, setLoading] = useState(false);
   const [loadingRecent, setLoadingRecent] = useState(true);
 
+  // Cargar movimientos recientes desde el servidor
   useEffect(() => {
-    const draft = readCache(DRAFT_KEY);
-    if (draft) {
-      if (!draft.date) draft.date = getToday();
-      setForm((prev) => ({ ...prev, ...draft }));
-    }
-  }, []);
-
-  useEffect(() => {
-    const cached = readCache(RECENT_KEY(form.date));
-    if (cached?.length) setRecentMovements(cached);
-
     const loadForDate = async () => {
       try {
         setLoadingRecent(true);
@@ -65,7 +47,6 @@ export const AddMovement = () => {
           .slice(0, 6);
 
         setRecentMovements(onlySelected);
-        writeCache(RECENT_KEY(form.date), onlySelected);
       } catch (e) {
         console.error("❌ Error trayendo movimientos:", e);
       } finally {
@@ -75,10 +56,6 @@ export const AddMovement = () => {
 
     loadForDate();
   }, [form.date]);
-
-  useEffect(() => {
-    writeCache(DRAFT_KEY, form);
-  }, [form]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -136,14 +113,12 @@ export const AddMovement = () => {
         date: saved.date ?? form.date,
       };
 
+      // Actualizar la lista de movimientos recientes solo en memoria
       if (ymd(normalized.date) === form.date) {
-        setRecentMovements((prev) => {
-          const next = [normalized, ...prev].slice(0, 6);
-          writeCache(RECENT_KEY(form.date), next);
-          return next;
-        });
+        setRecentMovements((prev) => [normalized, ...prev].slice(0, 6));
       }
 
+      // Resetear el formulario
       const reset = {
         type: form.type,
         frequencyType: "",
@@ -152,7 +127,6 @@ export const AddMovement = () => {
         date: form.date,
       };
       setForm(reset);
-      writeCache(DRAFT_KEY, reset);
     } catch (err) {
       console.error(err);
       alert("Error al guardar el movimiento");
