@@ -55,10 +55,7 @@ export const getLastMovements = async (days = 30) => {
   }
 };
 
-
-
-
-// Resumen de finanzas del negocio
+// Resumen de finanzas del negocio (para propietarios)
 export const getBusinessFinanceSummary = async (businessId, type) => {
   try {
     const { data } = await axiosApi.get(
@@ -68,13 +65,34 @@ export const getBusinessFinanceSummary = async (businessId, type) => {
       }
     );
 
-    console.log(`📦 Respuesta completa de ${type}:`, data);
+    console.log(`📦 Respuesta completa de ${type} del negocio:`, data);
 
     // El backend devuelve el array en data.data
     return data?.data || [];
 
   } catch (error) {
-    console.error(`❌ Error al obtener ${type}:`, error);
+    console.error(`❌ Error al obtener ${type} del negocio:`, error);
+    return [];
+  }
+};
+
+// Resumen de finanzas del usuario (para prestadores de servicios)
+export const getUserFinanceSummary = async (userId) => {
+  try {
+    const { data } = await axiosApi.get(
+      `/movements/user/${userId}`,
+      {
+        withCredentials: true,
+      }
+    );
+
+    console.log(`📦 Respuesta completa de movimientos del usuario:`, data);
+
+    // El backend devuelve el array en data.data
+    return data?.data || [];
+
+  } catch (error) {
+    console.error(`❌ Error al obtener movimientos del usuario:`, error);
     return [];
   }
 };

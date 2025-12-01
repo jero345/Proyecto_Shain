@@ -23,37 +23,33 @@ export default function Employees() {
           return;
         }
 
-        // Obtener el summary de cada empleado
-        const employeesWithSummary = await Promise.all(
+        // Obtener los movimientos de cada empleado
+        const employeesWithMovements = await Promise.all(
           data.map(async (emp) => {
             try {
-              const summaryRes = await axiosApi.get(
-                `movements/summary/${emp._id || emp.id}`,
+              console.log(`🔍 Obteniendo movimientos para ${emp.name} (ID: ${emp._id || emp.id})`);
+              
+              const movementsRes = await axiosApi.get(
+                `movements/user/${emp._id || emp.id}`,
                 { withCredentials: true }
               );
-              const summary = summaryRes?.data?.data || summaryRes?.data || {};
+              const movements = movementsRes?.data?.data || movementsRes?.data || [];
               
-              console.log(`📊 Summary de ${emp.name}:`, summary);
+              console.log(`📊 Movimientos de ${emp.name}:`, movements);
               
-              return { ...emp, summary };
+              return { ...emp, movements };
             } catch (err) {
-              console.error(`❌ Error obteniendo summary para ${emp.name}:`, err);
+              console.error(`❌ Error obteniendo movimientos para ${emp.name}:`, err);
               return { 
                 ...emp, 
-                summary: { 
-                  totalTransactionsMonth: {
-                    incomes: 0,
-                    expenses: 0
-                  },
-                  monthBalance: 0
-                } 
+                movements: []
               };
             }
           })
         );
 
-        console.log("👥 Empleados con summary cargados:", employeesWithSummary);
-        setEmployees(employeesWithSummary);
+        console.log("👥 Empleados con movimientos cargados:", employeesWithMovements);
+        setEmployees(employeesWithMovements);
       } catch (err) {
         console.error("❌ Error cargando empleados:", err);
         setError(err.message || "Error al cargar los empleados.");
@@ -70,6 +66,8 @@ export default function Employees() {
     setLoading(true);
     setTimeout(() => window.location.reload(), 400);
   };
+
+
 
   // 🌀 Loader visual
   if (loading) {
@@ -96,6 +94,7 @@ export default function Employees() {
     );
   }
 
+
   // 📊 Render normal
   return (
     <div className="p-6 min-h-screen bg-[#0b0b2f] text-white">
@@ -110,10 +109,27 @@ export default function Employees() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {employees.map((emp, index) => {
-            // Extraer datos de la estructura correcta
-            const totalIngresos = emp.summary?.totalTransactionsMonth?.incomes ?? 0;
-            const totalEgresos = emp.summary?.totalTransactionsMonth?.expenses ?? 0;
-            const balance = emp.summary?.monthBalance ?? (totalIngresos - totalEgresos);
+            // ✅ CALCULAR DESDE MOVEMENTS como en EmployeeDetail
+            const movements = emp.movements || [];
+            
+            const totalIngresos = movements
+              .filter((m) => m.type === "ingreso")
+              .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
+              
+            const totalEgresos = movements
+              .filter((m) => m.type === "egreso")
+              .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
+              
+            const balance = totalIngresos - totalEgresos;
+
+            console.log(`💰 RENDER - Datos finales de ${emp.name}:`, {
+              emp_id: emp._id || emp.id,
+              nombre: emp.name,
+              cant_movimientos: movements.length,
+              totalIngresos,
+              totalEgresos,
+              balance
+            });
 
             return (
               <div

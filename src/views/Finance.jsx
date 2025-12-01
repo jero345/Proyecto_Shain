@@ -137,72 +137,115 @@ export const Finance = () => {
           localStorage.setItem("financeSummary", JSON.stringify(summaryData));
         }
 
-        // 👇 OBTENER BUSINESS ID DESDE LOCALSTORAGE
-        let businessId = null;
-        
-        try {
-          const cachedBusiness = localStorage.getItem("business");
-          if (cachedBusiness) {
-            const parsed = JSON.parse(cachedBusiness);
-            businessId = parsed?._id || parsed?.id;
-          }
-        } catch (e) {
-          console.warn('⚠️ Error parseando business desde localStorage');
-        }
-        
-        // Fallback: intentar desde user
-        if (!businessId) {
-          businessId = user?.businessId || user?.business?._id || user?.business?.id;
-        }
-        
-        console.log('🏢 Business ID encontrado:', businessId);
-
-        if (businessId) {
+        // 🔹 LÓGICA DIFERENCIADA POR ROL
+        if (isOwner) {
+          // 👔 PROPIETARIO: Obtener movimientos del negocio completo
+          let businessId = null;
+          
           try {
-            console.log('🔄 Cargando movimientos del negocio...');
-            
-            // Importar el servicio
-            const { getBusinessFinanceSummary } = await import("@services/financeService");
-            
-            // Hacer 2 peticiones en paralelo
-            console.log('📞 Llamando a getBusinessFinanceSummary...');
-            const [ingresosData, egresosData] = await Promise.all([
-              getBusinessFinanceSummary(businessId, 'ingreso'),
-              getBusinessFinanceSummary(businessId, 'egreso')
-            ]);
+            const cachedBusiness = localStorage.getItem("business");
+            if (cachedBusiness) {
+              const parsed = JSON.parse(cachedBusiness);
+              businessId = parsed?._id || parsed?.id;
+            }
+          } catch (e) {
+            console.warn('⚠️ Error parseando business desde localStorage');
+          }
+          
+          // Fallback: intentar desde user
+          if (!businessId) {
+            businessId = user?.businessId || user?.business?._id || user?.business?.id;
+          }
+          
+          console.log('🏢 Business ID encontrado:', businessId);
 
-            console.log('💰 Respuesta INGRESOS:', ingresosData);
-            console.log('💸 Respuesta EGRESOS:', egresosData);
-
-            // Combinar los movimientos
-            const allMovements = [
-              ...(Array.isArray(ingresosData) ? ingresosData.map(m => ({ ...m, type: 'ingreso' })) : []),
-              ...(Array.isArray(egresosData) ? egresosData.map(m => ({ ...m, type: 'egreso' })) : [])
-            ];
-
-            console.log('📦 Total movimientos combinados:', allMovements.length);
-            console.log('📦 Movimientos:', allMovements);
-
-            if (allMovements.length > 0) {
-              const filteredMovements = filterMovementsByPeriod(allMovements, chartPeriod);
-              console.log('🔍 Movimientos filtrados:', filteredMovements.length);
+          if (businessId) {
+            try {
+              console.log('🔄 Cargando movimientos del negocio completo...');
               
-              const chartDataResult = buildChartFromMovements(filteredMovements);
-              console.log('📊 Datos para gráfica:', chartDataResult);
+              // Importar el servicio
+              const { getBusinessFinanceSummary } = await import("@services/financeService");
               
-              setChartData(chartDataResult);
-            } else {
-              console.warn('⚠️ No se encontraron movimientos');
+              // Hacer 2 peticiones en paralelo
+              console.log('📞 Llamando a getBusinessFinanceSummary...');
+              const [ingresosData, egresosData] = await Promise.all([
+                getBusinessFinanceSummary(businessId, 'ingreso'),
+                getBusinessFinanceSummary(businessId, 'egreso')
+              ]);
+
+              console.log('💰 Respuesta INGRESOS del negocio:', ingresosData);
+              console.log('💸 Respuesta EGRESOS del negocio:', egresosData);
+
+              // Combinar los movimientos
+              const allMovements = [
+                ...(Array.isArray(ingresosData) ? ingresosData.map(m => ({ ...m, type: 'ingreso' })) : []),
+                ...(Array.isArray(egresosData) ? egresosData.map(m => ({ ...m, type: 'egreso' })) : [])
+              ];
+
+              console.log('📦 Total movimientos del negocio:', allMovements.length);
+
+              if (allMovements.length > 0) {
+                const filteredMovements = filterMovementsByPeriod(allMovements, chartPeriod);
+                console.log('🔍 Movimientos filtrados (negocio):', filteredMovements.length);
+                
+                const chartDataResult = buildChartFromMovements(filteredMovements);
+                console.log('📊 Datos para gráfica (negocio):', chartDataResult);
+                
+                setChartData(chartDataResult);
+              } else {
+                console.warn('⚠️ No se encontraron movimientos del negocio');
+                setChartData([]);
+              }
+
+            } catch (err) {
+              console.error('❌ Error al cargar movimientos del negocio:', err);
               setChartData([]);
             }
-
-          } catch (err) {
-            console.error('❌ Error al cargar movimientos:', err);
+          } else {
+            console.error('❌ No se pudo obtener el businessId');
             setChartData([]);
           }
         } else {
-          console.error('❌ No se pudo obtener el businessId');
-          setChartData([]);
+          // 👤 PRESTADOR DE SERVICIOS: Obtener solo sus movimientos
+          console.log('👤 Cargando movimientos del usuario (prestador)...');
+          
+          if (userId) {
+            try {
+              // Importar el servicio
+              const { getUserFinanceSummary } = await import("@services/financeService");
+              
+              // Obtener todos los movimientos del usuario en una sola llamada
+              console.log('📞 Llamando a getUserFinanceSummary...');
+              const movementsData = await getUserFinanceSummary(userId);
+
+              console.log('📦 Respuesta de movimientos del usuario:', movementsData);
+
+              // Los movimientos ya vienen con su tipo del backend
+              const allMovements = Array.isArray(movementsData) ? movementsData : [];
+
+              console.log('📦 Total movimientos del usuario:', allMovements.length);
+
+              if (allMovements.length > 0) {
+                const filteredMovements = filterMovementsByPeriod(allMovements, chartPeriod);
+                console.log('🔍 Movimientos filtrados (usuario):', filteredMovements.length);
+                
+                const chartDataResult = buildChartFromMovements(filteredMovements);
+                console.log('📊 Datos para gráfica (usuario):', chartDataResult);
+                
+                setChartData(chartDataResult);
+              } else {
+                console.warn('⚠️ No se encontraron movimientos del usuario');
+                setChartData([]);
+              }
+
+            } catch (err) {
+              console.error('❌ Error al cargar movimientos del usuario:', err);
+              setChartData([]);
+            }
+          } else {
+            console.error('❌ No se pudo obtener el userId');
+            setChartData([]);
+          }
         }
 
       } catch (error) {
@@ -213,7 +256,7 @@ export const Finance = () => {
     };
 
     fetchData();
-  }, [todayDate, chartPeriod, user]);
+  }, [todayDate, chartPeriod, user, userId, isOwner]);
 
   // Cargar miembros del equipo (solo para propietarios)
   useEffect(() => {
@@ -222,8 +265,59 @@ export const Finance = () => {
     const loadTeamMembers = async () => {
       setLoadingTeam(true);
       try {
-        const employees = await getEmployees();
-        setTeamMembers(employees || []);
+        const employeesData = await getEmployees();
+        
+        // Obtener los movimientos de cada empleado para calcular ingresos
+        const { axiosApi } = await import("@services/axiosclient");
+        
+        const employeesWithData = await Promise.all(
+          (employeesData || []).map(async (emp) => {
+            try {
+              console.log(`🔍 Obteniendo movimientos para ${emp.name} (ID: ${emp._id || emp.id})`);
+              
+              const movementsRes = await axiosApi.get(
+                `movements/user/${emp._id || emp.id}`,
+                { withCredentials: true }
+              );
+              const movements = movementsRes?.data?.data || movementsRes?.data || [];
+              
+              console.log(`📊 Movimientos de ${emp.name} en Finance:`, movements);
+              
+              // Calcular ingresos del mes actual
+              const now = new Date();
+              const currentMonth = now.getMonth();
+              const currentYear = now.getFullYear();
+              
+              const ingresosDelMes = movements
+                .filter((m) => {
+                  const movementDate = new Date(m.date);
+                  return (
+                    m.type === "ingreso" &&
+                    movementDate.getMonth() === currentMonth &&
+                    movementDate.getFullYear() === currentYear
+                  );
+                })
+                .reduce((sum, m) => sum + Number(m.value || 0), 0);
+              
+              console.log(`💰 Ingresos del mes de ${emp.name}:`, ingresosDelMes);
+              
+              return { 
+                ...emp, 
+                movements,
+                ingresosDelMes
+              };
+            } catch (err) {
+              console.error(`❌ Error obteniendo datos para ${emp.name}:`, err);
+              return { 
+                ...emp, 
+                movements: [],
+                ingresosDelMes: 0
+              };
+            }
+          })
+        );
+        
+        setTeamMembers(employeesWithData);
       } catch (error) {
         console.error("❌ Error al cargar miembros del equipo:", error);
       } finally {
@@ -243,21 +337,25 @@ export const Finance = () => {
   }
 
   // ============================================
-  // EXTRAER DATOS DEL SUMMARY
+  // EXTRAER DATOS DEL SUMMARY (Nueva estructura)
   // ============================================
 
-  // Ingresos y Egresos del Día
-  const totalTransactionsDay = summary?.totalTransactionsDay || {};
+  // Estadísticas del día
+  const dayStatistics = summary?.dayStatistics || {};
+  const totalTransactionsDay = dayStatistics?.totalTransactionsDay || {};
+  
   const incomesToday = Number(totalTransactionsDay?.incomes || 0);
   const expensesToday = Number(totalTransactionsDay?.expenses || 0);
 
-  // Ingresos y Egresos del Mes
-  const totalTransactionsMonth = summary?.totalTransactionsMonth || {};
+  // Estadísticas del mes
+  const monthStatistics = summary?.monthStatistics || {};
+  const totalTransactionsMonth = monthStatistics?.totalTransactionsMonth || {};
+  
   const ingresosMonth = Number(totalTransactionsMonth?.incomes || 0);
   const egresosMonth = Number(totalTransactionsMonth?.expenses || 0);
 
-  // Balance Mensual (desde el backend o calculado)
-  const balanceMensual = summary?.monthBalance || (ingresosMonth - egresosMonth);
+  // Balance Mensual (desde el backend)
+  const balanceMensual = Number(monthStatistics?.monthBalance || 0);
 
   // Meta Mensual
   const safeGoal = parseGoal(goal);
@@ -268,6 +366,16 @@ export const Finance = () => {
   const progress = circleCircumference - (percentage / 100) * circleCircumference;
 
   const isOk = ingresosMonth >= egresosMonth;
+
+  console.log('📊 Datos extraídos del summary en Finance:', {
+    incomesToday,
+    expensesToday,
+    ingresosMonth,
+    egresosMonth,
+    balanceMensual,
+    safeGoal,
+    percentage
+  });
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
@@ -399,7 +507,8 @@ export const Finance = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {teamMembers.map((member) => {
-                const memberIngresos = member.ingresos ?? 0;
+                // ✅ Usar ingresosDelMes calculado desde movements
+                const memberIngresos = member.ingresosDelMes ?? 0;
                 const memberGoal = member.goal ?? 0;
                 const memberPercentage = memberGoal > 0 
                   ? Math.min((memberIngresos / memberGoal) * 100, 100) 

@@ -10,10 +10,19 @@ export const BookAppointment = () => {
   const [appointments, setAppointments] = useState([]);
   const [availableTimes, setAvailableTimes] = useState([]);
 
+  // Función para formatear fecha sin desfase de zona horaria
+  const formatDateToYYYYMMDD = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   useEffect(() => {
     const fetchTimes = async () => {
       try {
-        const formattedDate = date.toISOString().split('T')[0];  // Se asegura de obtener solo la fecha en formato YYYY-MM-DD
+        const formattedDate = formatDateToYYYYMMDD(date);
+        console.log('📅 Fecha seleccionada para consultar horarios:', formattedDate);
         const available = await getAvailableTimeslots(formattedDate);
         setAvailableTimes(available);
         setSelectedTimeId('');
@@ -32,18 +41,21 @@ export const BookAppointment = () => {
       return;
     }
 
+    const formattedDate = formatDateToYYYYMMDD(date);
+
     const newAppointment = {
-      date: date.toISOString().split('T')[0],  // Este es el formato adecuado para la fecha
+      date: formattedDate,
       timeSlot: selectedTimeId,
       customerName: clientName,
       description,
     };
 
     console.log("🚀 Enviando cita:", newAppointment);
+    console.log("📅 Fecha que se enviará:", formattedDate);
 
     try {
       const saved = await bookAppointmentService(newAppointment);
-      setAppointments([...appointments, { ...saved, date: new Date(saved.date).toDateString() }]);
+      setAppointments([...appointments, { ...saved, date: saved.date }]);
       alert('✅ Cita reservada correctamente');
       setClientName('');
       setDescription('');
@@ -68,7 +80,7 @@ export const BookAppointment = () => {
             next2Label={null}
             prev2Label={null}
             tileClassName={({ date: day, view }) =>
-              view === 'month' && day.toDateString() === new Date(date).toDateString()
+              view === 'month' && day.toDateString() === date.toDateString()
                 ? 'bg-[#1f1f3c] text-white rounded-full font-bold'
                 : 'rounded-full text-white/80 hover:bg-white/20 transition'
             }
@@ -104,7 +116,11 @@ export const BookAppointment = () => {
               <label className="block text-sm mb-1">📅 Fecha</label>
               <input
                 type="text"
-                value={date.toLocaleDateString()}  // Muestra la fecha seleccionada en formato legible
+                value={date.toLocaleDateString('es-CO', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
                 readOnly
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               />
@@ -114,7 +130,7 @@ export const BookAppointment = () => {
               <label className="block text-sm mb-1">⏰ Hora</label>
               <input
                 type="text"
-                value={availableTimes.find((t) => t._id === selectedTimeId)?.label || ''}
+                value={availableTimes.find((t) => t._id === selectedTimeId)?.label || 'Selecciona un horario'}
                 readOnly
                 className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
               />
@@ -126,17 +142,19 @@ export const BookAppointment = () => {
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
+                placeholder="Nombre del cliente"
+                className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder:text-white/50"
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1">📝 Descripción </label>
+              <label className="block text-sm mb-1">📝 Descripción</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
+                placeholder="Describe el servicio o motivo de la cita"
+                className="w-full px-4 py-2 rounded-md bg-white/10 text-white placeholder:text-white/50"
               ></textarea>
             </div>
 

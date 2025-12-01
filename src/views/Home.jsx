@@ -4,7 +4,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Chart } from "@components/Chart";
-import { getMovementsForServiceProvider, getMovementsForBusinessOwner, getDailySummaryService } from "@services/addMovementService";
+import { getDailySummaryService, getMovementsForServiceProvider, getMovementsForBusinessOwner } from "@services/addMovementService";
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -21,6 +21,8 @@ export const Home = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError("");
+
       const userId = localStorage.getItem('user_id');
       const businessId = localStorage.getItem('business_id');
 
@@ -50,11 +52,13 @@ export const Home = () => {
         const chart = buildChartFromMovements(movements);
         console.log('📊 Datos procesados para gráfico:', chart);
         setChartData(chart);
+      } else {
+        setChartData([]);
       }
 
     } catch (err) {
       console.error("❌ Error en fetchData:", err);
-      setError("No se pudo cargar la información del dashboard");
+      setError(err.message || "No se pudo cargar la información del dashboard");
     } finally {
       setLoading(false);
     }
@@ -129,30 +133,29 @@ export const Home = () => {
   }
 
   // ============================================
-  // EXTRAER DATOS DEL SUMMARY (ESTRUCTURA REAL DEL BACKEND)
+  // EXTRAER DATOS DEL SUMMARY (Nueva estructura)
   // ============================================
 
-  // Total del día (de totalTransactionsDay)
-  const totalTransactionsDay = summary?.totalTransactionsDay || {};
-  const totalDelDia = Number(totalTransactionsDay?.incomes || 0); // 👈 Este es el valor que debe mostrarse
-
-  // Ingresos y Egresos del Día (para detalles)
+  // Estadísticas del día
+  const dayStatistics = summary?.dayStatistics || {};
+  const totalTransactionsDay = dayStatistics?.totalTransactionsDay || {};
+  
   const incomesToday = Number(totalTransactionsDay?.incomes || 0);
   const expensesToday = Number(totalTransactionsDay?.expenses || 0);
+  const totalDelDia = incomesToday - expensesToday;
 
-  // Ingresos y Egresos del Mes (de totalTransactionsMonth)
-  const totalTransactionsMonth = summary?.totalTransactionsMonth || {};
+  const salesIncreaseAmountDay = Number(dayStatistics?.salesIncreaseAmountDay || 0);
+  const salesGrowthPercentageDay = Number(dayStatistics?.salesGrowthPercentageDay || 0);
+
+  // Estadísticas del mes
+  const monthStatistics = summary?.monthStatistics || {};
+  const totalTransactionsMonth = monthStatistics?.totalTransactionsMonth || {};
+  
   const ingresosMonth = Number(totalTransactionsMonth?.incomes || 0);
   const egresosMonth = Number(totalTransactionsMonth?.expenses || 0);
+  const monthBalance = Number(monthStatistics?.monthBalance || 0);
 
-  // Balance del Mes
-  const monthBalance = Number(summary?.monthBalance || 0);
-
-  // Cálculos de ventas (opcional)
-  const salesIncreaseAmountDay = Number(summary?.calculationSales?.salesIncreaseAmountDay || 0);
-  const salesGrowthPercentageDay = Number(summary?.calculationSales?.salesGrowthPercentageDay || 0);
-
-  // Margen de Ganancia
+  // Margen de ganancia (desde el nivel principal)
   const profitMargin = Number(summary?.profitMargin || 0);
 
   console.log('📊 Datos extraídos del summary:', {
@@ -241,7 +244,7 @@ export const Home = () => {
               <div className="mt-3 pt-3 border-t border-white/10">
                 <p className="text-white/70 text-xs mb-1">Margen de ganancia</p>
                 <p className="text-lg font-bold text-purple-300">
-                  {profitMargin.toLocaleString()}%
+                  ${profitMargin.toLocaleString()}
                 </p>
               </div>
             )}

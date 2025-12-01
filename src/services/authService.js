@@ -192,9 +192,23 @@ export const getUserByIdService = async (id) => {
   return res.data.data;
 };
 
-export const updateUserService = async (id, payload) => {
-  const res = await axiosApi.patch(`/users/${id}`, payload, { withCredentials: true });
-  return res.data.data;
+// Actualizar usuario - Ahora usa /users/me
+export const updateUserService = async (payload) => {
+  try {
+    const { data } = await axiosApi.patch('/users/me', payload, {
+      withCredentials: true,
+    });
+    
+    // Actualizar el localStorage con los nuevos datos
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const updatedUser = { ...currentUser, ...data.data };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    return data.data;
+  } catch (error) {
+    console.error('❌ Error al actualizar usuario:', error);
+    throw error.response?.data || error;
+  }
 };
 
 export const changePasswordService = async (userId, data) => {

@@ -14,6 +14,7 @@ export const Profile = () => {
     goal: '', // Meta personal agregada
   });
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const userId = JSON.parse(localStorage.getItem('user'))?.id;
@@ -29,6 +30,9 @@ export const Profile = () => {
           email: data.email || '',
           goal: data.goal || '', // Asignación de meta personal
         });
+      }).catch((error) => {
+        console.error('Error al cargar perfil:', error);
+        setMessage({ text: 'Error al cargar el perfil', type: 'error' });
       });
     }
   }, [userId]);
@@ -42,30 +46,48 @@ export const Profile = () => {
     const { name, lastName, username, email, goal } = editForm;
 
     // Validación para asegurarse que todos los campos estén completos
-    if (!name || !lastName || !username || !email || !goal) {
-      setMessage({ text: 'Por favor completa todos los campos.', type: 'error' });
+    if (!name || !lastName || !username || !email) {
+      setMessage({ text: 'Por favor completa todos los campos requeridos.', type: 'error' });
       return;
     }
 
     try {
-      const updated = await updateUserService(userId, {
+      setLoading(true);
+      
+      // ✅ Ahora solo enviamos el payload, sin el ID
+      const updated = await updateUserService({
         name,
         lastName,
         username,
         email,
-        goal, // Enviando meta personal
+        goal: goal || 0, // Enviando meta personal (0 si está vacío)
       });
 
       setUser(updated);
       setIsEditing(false);
       setMessage({ text: 'Perfil actualizado con éxito ✅', type: 'success' });
+      
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => {
+        setMessage({ text: '', type: '' });
+      }, 3000);
     } catch (err) {
       console.error('Error actualizando usuario', err);
-      setMessage({ text: 'Error al actualizar el perfil. Intenta de nuevo.', type: 'error' });
+      setMessage({ 
+        text: err?.message || 'Error al actualizar el perfil. Intenta de nuevo.', 
+        type: 'error' 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!user) return <p className="text-white p-6">Cargando perfil...</p>;
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center text-white">
+      <div className="animate-spin h-10 w-10 border-4 border-t-transparent border-purple-400 rounded-full"></div>
+      <p className="ml-3">Cargando perfil...</p>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-10 text-white">
@@ -89,30 +111,37 @@ export const Profile = () => {
           </div>
           <div>
             <h2 className="text-2xl font-semibold">{user.name} {user.lastName}</h2>
-            <p className="text-white/60">{user.username}</p>
+            <p className="text-white/60">@{user.username}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {['name', 'lastName', 'username', 'email', 'goal'].map((field) => (
             <div key={field}>
-              <label className="block text-sm mb-1">
+              <label className="block text-sm mb-1 text-white/80">
                 {field === 'name' ? 'Nombre' :
                  field === 'lastName' ? 'Apellido' :
                  field === 'username' ? 'Usuario' :
                  field === 'email' ? 'Correo electrónico' :
                  'Meta personal'}
+                {field !== 'goal' && <span className="text-red-400 ml-1">*</span>}
               </label>
               {isEditing ? (
                 <input
-                  type={field === 'email' ? 'email' : 'text'}
+                  type={field === 'email' ? 'email' : field === 'goal' ? 'number' : 'text'}
                   name={field}
                   value={editForm[field]}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-md bg-white/10 text-white"
+                  placeholder={field === 'goal' ? 'Ej: 5000000' : ''}
+                  className="w-full px-4 py-2 rounded-md bg-white/10 text-white border border-white/20 focus:border-purple-500 focus:outline-none transition"
                 />
               ) : (
-                <p className="bg-white/10 px-4 py-2 rounded-md">{user[field]}</p>
+                <p className="bg-white/10 px-4 py-2 rounded-md">
+                  {field === 'goal' 
+                    ? (user[field] ? `$${Number(user[field]).toLocaleString('es-CO')}` : 'Sin meta definida')
+                    : user[field]
+                  }
+                </p>
               )}
             </div>
           ))}
@@ -123,16 +152,34 @@ export const Profile = () => {
             <>
               <button
                 onClick={handleSave}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 transition"
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save size={16} /> Guardar cambios
+                {loading ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-t-transparent border-white rounded-full"></div>
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} /> Guardar cambios
+                  </>
+                )}
               </button>
               <button
                 onClick={() => {
                   setIsEditing(false);
                   setMessage({ text: '', type: '' });
+                  setEditForm({
+                    name: user.name,
+                    lastName: user.lastName,
+                    username: user.username,
+                    email: user.email,
+                    goal: user.goal || '',
+                  });
                 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 transition"
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <X size={16} /> Cancelar
               </button>
@@ -150,7 +197,7 @@ export const Profile = () => {
                 setIsEditing(true);
                 setMessage({ text: '', type: '' });
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 transition"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-purple-600 hover:bg-purple-700 transition"
             >
               <Pencil size={16} /> Editar perfil
             </button>
@@ -158,7 +205,7 @@ export const Profile = () => {
 
           <button
             onClick={() => navigate('/dashboard/change-password')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-yellow-600 hover:bg-yellow-700 transition"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-yellow-600 hover:bg-yellow-700 transition"
           >
             <Lock size={16} /> Cambiar contraseña
           </button>
