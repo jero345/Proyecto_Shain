@@ -1,6 +1,6 @@
 // src/views/History.jsx
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, ArrowDownRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Pencil, Trash2, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Dialog } from "@headlessui/react";
 import {
@@ -15,6 +15,16 @@ const getSafeId = (obj) => obj?.id ?? obj?._id;
 const money = (n) => Number(n || 0).toLocaleString("es-CO");
 const ymd = (d) => (d ? String(d).slice(0, 10) : "");
 const ymdSlash = (d) => (d ? ymd(d).replaceAll("-", "/") : "");
+
+// Extraer solo dígitos
+const toDigits = (str) => String(str || "").replace(/\D+/g, "");
+
+// Formatear número con separadores de miles
+const formatThousands = (value) => {
+  const digits = toDigits(value);
+  if (!digits) return "";
+  return Number(digits).toLocaleString("es-CO");
+};
 
 // clave secundaria por si fechas son iguales
 const secondaryKey = (x) =>
@@ -93,7 +103,19 @@ export const History = () => {
     setEditModalOpen(true);
   };
 
+  // Manejar cambio en el valor (con formato de miles)
+  const handleValueChange = (e) => {
+    const digits = toDigits(e.target.value);
+    setEditForm({ ...editForm, value: digits });
+  };
+
   const handleEditSubmit = async () => {
+    // Validar que haya un valor
+    if (!editForm.value || Number(editForm.value) <= 0) {
+      setToast({ message: "Ingresa un valor válido.", type: "error" });
+      return;
+    }
+
     try {
       const base = selectedMovement ?? {};
       const updated = {
@@ -152,115 +174,157 @@ export const History = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
-      <div className="flex items-center gap-2 mb-4">
-        <h1 className="text-base font-semibold text-white/80">Historial</h1>
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-10 text-white">
+      {/* Header mejorado */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+        <h1 className="text-base font-semibold text-white/90">Historial</h1>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold">Movimientos recientes</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+        <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+          Movimientos recientes
+        </h2>
         <Link to="/dashboard/agregar-movimiento">
-          <button className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full text-sm font-medium transition">
+          <button className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105">
             + Agregar Movimiento
           </button>
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        {["todos", "ingreso", "egreso"].map((type) => (
-          <button
-            key={type}
-            onClick={() => setFilterType(type)}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
-              filterType === type
-                ? type === "todos"
-                  ? "bg-black text-white"
-                  : type === "ingreso"
-                  ? "bg-white/10 border border-green-500 text-green-300"
-                  : "bg-white/10 border border-red-500 text-red-300"
-                : type === "ingreso"
-                ? "bg-white/5 hover:bg-white/10 text-green-400"
-                : "bg-white/5 hover:bg-white/10 text-red-400"
-            }`}
-          >
-            Ver {type.charAt(0).toUpperCase() + type.slice(1)}
-          </button>
-        ))}
+      {/* Filtros y búsqueda */}
+      <div className="flex flex-col gap-3 mb-6 sm:mb-8">
+        {/* Filtros */}
+        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex">
+          {["todos", "ingreso", "egreso"].map((type) => {
+            const isActive = filterType === type;
+            return (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`px-2 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                  type === "todos"
+                    ? isActive
+                      ? "bg-indigo-600 text-white border-2 border-indigo-400 shadow-lg shadow-indigo-500/30"
+                      : "bg-slate-800/80 hover:bg-indigo-600/20 text-white/70 hover:text-indigo-300 border border-slate-600 hover:border-indigo-400/50"
+                    : type === "ingreso"
+                    ? isActive
+                      ? "bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg shadow-emerald-500/30"
+                      : "bg-slate-800/80 hover:bg-emerald-600/20 text-white/70 hover:text-emerald-300 border border-slate-600 hover:border-emerald-400/50"
+                    : isActive
+                    ? "bg-rose-600 text-white border-2 border-rose-400 shadow-lg shadow-rose-500/30"
+                    : "bg-slate-800/80 hover:bg-rose-600/20 text-white/70 hover:text-rose-300 border border-slate-600 hover:border-rose-400/50"
+                }`}
+              >
+                {type === "todos" ? "Ver Todos" : type === "ingreso" ? "Ver Ingreso" : "Ver Egreso"}
+              </button>
+            );
+          })}
+        </div>
 
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por descripción…"
-          className="ml-auto px-4 py-2 rounded-md bg-white/10 border border-white/20 text-white text-sm"
-        />
+        {/* Búsqueda */}
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+          />
+        </div>
       </div>
 
-      <div className="bg-[#0b0f19] rounded-xl p-6">
-        <h3 className="text-base font-bold mb-4">
-          Todos los movimientos (más recientes primero)
+      {/* Lista de movimientos mejorada */}
+      <div className="bg-gradient-to-br from-[#0b0f19] to-[#0f172a] rounded-2xl p-4 sm:p-6 border border-white/5 shadow-2xl">
+        <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2">
+          <div className="w-1.5 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+          Todos los movimientos
         </h3>
 
         {visibleMovements.length === 0 ? (
-          <p className="text-sm text-white/60">
-            No se encontraron movimientos.
-          </p>
+          <div className="text-center py-12 sm:py-16">
+            <p className="text-base sm:text-lg text-white/60 font-medium">No se encontraron movimientos</p>
+            <p className="text-sm text-white/40 mt-2">Intenta ajustar los filtros o agrega un nuevo movimiento</p>
+          </div>
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {visibleMovements.map((item) => {
               const itemId = getSafeId(item);
               const isIngreso = (item?.type || "").toLowerCase() === "ingreso";
               return (
                 <li
                   key={itemId}
-                  className="flex justify-between items-center bg-[#0f172a] border border-white/5 rounded-2xl px-4 py-4"
+                  className="group bg-[#0f172a]/50 border border-white/5 hover:border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all hover:shadow-lg"
                 >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        isIngreso ? "bg-green-600" : "bg-red-600"
-                      }`}
-                    >
-                      {isIngreso ? (
-                        <ArrowUpRight size={16} />
+                  {/* Layout móvil: 2 filas */}
+                  <div className="flex flex-col gap-3">
+                    {/* Fila 1: Icono + Info + Monto */}
+                    <div className="flex items-center gap-3">
+                      {/* Icono */}
+                      <div
+                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-110 ${
+                          isIngreso 
+                            ? "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/20" 
+                            : "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/20"
+                        } shadow-lg`}
+                      >
+                        {isIngreso ? (
+                          <ArrowUpRight size={18} className="text-white" />
+                        ) : (
+                          <ArrowDownRight size={18} className="text-white" />
+                        )}
+                      </div>
+
+                      {/* Info: Tipo + Fecha */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold capitalize text-white">
+                          {isIngreso ? "Ingreso" : "Egreso"}
+                        </p>
+                        <p className="text-xs text-white/50 font-medium">
+                          {ymdSlash(item?.date)}
+                        </p>
+                      </div>
+
+                      {/* Monto - alineado a la derecha */}
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-base sm:text-lg font-bold ${
+                          isIngreso ? "text-emerald-400" : "text-red-400"
+                        }`}>
+                          {isIngreso ? "+" : "-"}${money(item?.value)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Fila 2: Descripción + Botones */}
+                    <div className="flex items-center justify-between gap-2 pl-[52px] sm:pl-[56px]">
+                      {/* Descripción */}
+                      {item?.description ? (
+                        <p className="text-xs text-white/50 truncate flex-1">
+                          {item.description}
+                        </p>
                       ) : (
-                        <ArrowDownRight size={16} />
+                        <p className="text-xs text-white/30 italic flex-1">Sin descripción</p>
                       )}
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold capitalize">
-                        {isIngreso ? "Ingreso" : "Egreso"}
-                      </p>
-                      <p className="text-xs text-white/50">
-                        {ymdSlash(item?.date)}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="text-right">
-                    <p className="text-sm font-bold">
-                      {isIngreso ? "+" : "-"}${money(item?.value)}
-                    </p>
-                    <p className="text-xs text-white/50">
-                      {item?.description || "-"}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditClick(item)}
-                      className="hover:text-yellow-400"
-                      title="Editar"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClick(item)}
-                      className="hover:text-red-400"
-                      title="Eliminar"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                      {/* Botones de acción */}
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleEditClick(item)}
+                          className="p-1 text-white transition-all"
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(item)}
+                          className="p-1 text-white transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </li>
               );
@@ -279,38 +343,43 @@ export const History = () => {
             </Dialog.Title>
 
             <div>
-              <label className="block text-sm font-medium">Valor</label>
-              <input
-                type="text"
-                value={editForm.value}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, value: e.target.value })
-                }
-                className="w-full px-4 py-2 rounded-md bg-white/10 border border-white/20 text-white"
-              />
+              <label className="block text-sm font-medium mb-2">Valor</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 font-semibold">
+                  $
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatThousands(editForm.value)}
+                  onChange={handleValueChange}
+                  placeholder="0"
+                  className="w-full pl-8 pr-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium">Descripción</label>
+              <label className="block text-sm font-medium mb-2">Descripción</label>
               <input
                 type="text"
                 value={editForm.description}
                 onChange={(e) =>
                   setEditForm({ ...editForm, description: e.target.value })
                 }
-                className="w-full px-4 py-2 rounded-md bg-white/10 border border-white/20 text-white"
+                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setEditModalOpen(false)}
-                className="text-white/70 hover:underline"
+                className="px-4 py-2 text-white/70 hover:text-white transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleEditSubmit}
-                className="bg-gradient-to-br from-gradientStart to-gradientEnd px-4 py-2 rounded-md font-semibold"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2 rounded-xl font-semibold hover:opacity-90 transition-all"
               >
                 Guardar
               </button>
@@ -330,18 +399,18 @@ export const History = () => {
             <Dialog.Description className="text-sm text-white/60">
               Esta acción no se puede deshacer.
             </Dialog.Description>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setDeleteModalOpen(false)}
-                className="text-white/70 hover:underline"
+                className="px-4 py-2 text-white/70 hover:text-white transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleDeleteConfirm}
-                className="px-4 py-1.5 rounded-md text-white bg-red-600 hover:bg-red-700"
+                className="px-6 py-2 rounded-xl text-white bg-red-600 hover:bg-red-700 font-semibold transition-all"
               >
                 Eliminar
               </button>

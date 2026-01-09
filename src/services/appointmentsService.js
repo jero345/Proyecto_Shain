@@ -4,20 +4,26 @@ const pick = (r) => r?.data?.data ?? r?.data ?? r;
 
 /**
  * Horarios disponibles por fecha (YYYY-MM-DD)
+ * El backend ya devuelve el campo 'available' correcto
  */
 export const getAvailableTimeslots = async (date) => {
   try {
-    const res = await axiosApi.get(`/timeslots/available`, {
+    const response = await axiosApi.get(`/timeslots/available`, {
       params: { date },
       withCredentials: true,
     });
+    
+    const timeslots = pick(response) ?? [];
 
-    const list = pick(res) ?? [];
-    // Normalizamos: _id, label(hora), available
-    return list.map((item) => ({
+    console.log('📅 Fecha:', date);
+    console.log('🕐 Timeslots recibidos:', timeslots);
+
+    // Usar directamente el valor 'available' que viene del backend
+    return timeslots.map((item) => ({
       _id: item._id || item.id,
       label: item.hour,
-      available: !!item.available,
+      hour: item.hour,
+      available: item.available === true, // Comparación estricta
     }));
   } catch (error) {
     console.error('❌ Error al obtener horarios:', error);
@@ -42,7 +48,6 @@ export const bookAppointmentService = async (appointment) => {
 
 /**
  * Traer todas las citas con el timeSlot poblado para obtener la HORA
- * (Si tu backend usa otro nombre de parámetro, cambia "populate" por include/expand/etc.)
  */
 export const getAllAppointmentsService = async () => {
   console.log('🚀 FUNCIÓN getAllAppointmentsService INICIADA');
@@ -87,7 +92,7 @@ export const getAllAppointmentsService = async () => {
         customerName: a.customerName || '',
         description: a.description || '',
         timeSlotId: a.timeSlot?._id || a.timeSlot?.id || null,
-        hour: hour, // Hora extraída del objeto timeSlot
+        hour: hour,
       };
 
       console.log('✅ Normalizada:', normalized);
@@ -127,13 +132,12 @@ export const deleteAppointmentService = async (id) => {
 export const getAppointmentsWithFilterService = async (filter) => {
   try {
     const { data } = await axiosApi.get(`/bookings`, {
-      params: { filter }, // today - month - all
+      params: { filter },
       withCredentials: true,
     });
 
     const list = data?.data ?? [];
 
-    // Normalizamos las citas para la UI
     return list.map((a) => ({
       id: a._id || a.id,
       date: a.date || a.day || a.appointmentDate || null,

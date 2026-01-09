@@ -1,24 +1,26 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { AlertTriangle, BarChart, Target, Users } from "lucide-react";
+import { AlertTriangle, BarChart, Target, Users, CheckCircle } from "lucide-react";
 import { Chart } from "@components/Chart";
 import { MiniCardChart } from "@components/MiniCardChart";
 import { getDailySummaryService } from "@services/addMovementService";
 import { getEmployees } from "@services/employeesService";
+import { getBusinessById } from "@services/businessService";
 import { useAuth } from "@context/AuthContext";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { ROLES, normalizeRole } from "../constant/roles";
 
 export const Finance = () => {
   const navigate = useNavigate();
-  const { user } = useAuth() || {};
-  const userId = user?.id || user?._id || user?.userId || "";
+  const { user, logout } = useAuth() || {};
   const userRole = normalizeRole(user?.role || "");
 
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [goal, setGoal] = useState(5000);
+  const [error, setError] = useState("");
+  const [goal, setGoal] = useState(0);
+  const [businessData, setBusinessData] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [chartPeriod, setChartPeriod] = useState("7days");
@@ -26,38 +28,71 @@ export const Finance = () => {
   const todayDate = new Date().toISOString().split("T")[0];
   const isOwner = userRole === ROLES.OWNER;
 
+  console.log('🎯 Finance - Rol del usuario:', userRole, 'isOwner:', isOwner);
+
   const parseGoal = (v) => {
     if (v == null) return 0;
     const n = Number(String(v).replace(/[^\d.]/g, ""));
     return Number.isFinite(n) ? n : 0;
   };
 
+  // Obtener userId y businessId de forma robusta
+  const getUserId = () => {
+    let userId = localStorage.getItem('user_id');
+    if (!userId) {
+      userId = user?.id || user?._id || user?.userId;
+      if (userId) {
+        localStorage.setItem('user_id', userId);
+      }
+    }
+    return userId;
+  };
+
+  const getBusinessId = () => {
+    let businessId = localStorage.getItem('business_id');
+    if (!businessId) {
+      const businessValue = user?.business || user?.businessId;
+      if (typeof businessValue === 'string') {
+        businessId = businessValue;
+        localStorage.setItem('business_id', businessId);
+      } else if (businessValue && typeof businessValue === 'object') {
+        businessId = businessValue.id || businessValue._id;
+        if (businessId) {
+          localStorage.setItem('business_id', businessId);
+        }
+      }
+    }
+    return businessId;
+  };
+
   // Convertir movimientos para la gráfica
   const buildChartFromMovements = (movements) => {
-    console.log('🏗️ buildChartFromMovements - Entrada:', movements);
-    
     const grouped = {};
     (Array.isArray(movements) ? movements : []).forEach((m) => {
-      console.log('  📌 Procesando movimiento:', m);
+      if (!m.date) return;
       
-      const date = new Date(m.date).toLocaleDateString("es-CO");
-      if (!grouped[date]) grouped[date] = { date, Ingresos: 0, Egresos: 0 };
+      const [year, month, day] = m.date.split('-').map(Number);
+      const fecha = new Date(year, month - 1, day);
+      const dateKey = fecha.toLocaleDateString("es-CO", {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      
+      if (!grouped[dateKey]) grouped[dateKey] = { date: dateKey, Ingresos: 0, Egresos: 0 };
       const t = (m.type || "").toLowerCase();
       
-      console.log(`    Fecha: ${date}, Tipo: ${t}, Valor: ${m.value}`);
-      
-      if (t === "ingreso") grouped[date].Ingresos += Number(m.value) || 0;
-      if (t === "egreso") grouped[date].Egresos += Number(m.value) || 0;
+      if (t === "ingreso") grouped[dateKey].Ingresos += Number(m.value) || 0;
+      if (t === "egreso") grouped[dateKey].Egresos += Number(m.value) || 0;
     });
 
-    console.log('📊 Datos agrupados:', grouped);
-
-    const result = Object.values(grouped).sort(
-      (a, b) => new Date(a.date) - new Date(b.date)
-    );
-    
-    console.log('✅ buildChartFromMovements - Resultado final:', result);
-    return result;
+    return Object.values(grouped).sort((a, b) => {
+      const [dayA, monthA, yearA] = a.date.split('/').map(Number);
+      const [dayB, monthB, yearB] = b.date.split('/').map(Number);
+      const dateA = new Date(yearA, monthA - 1, dayA);
+      const dateB = new Date(yearB, monthB - 1, dayB);
+      return dateA - dateB;
+    });
   };
 
   // Filtrar movimientos según el período seleccionado
@@ -90,22 +125,70 @@ export const Finance = () => {
     });
   };
 
-  // Cargar meta mensual (goal) desde cache
+  // ============================================
+  // CARGAR DATOS DEL NEGOCIO (SOLO para propietarios)
+  // ============================================
   useEffect(() => {
-    const cached = localStorage.getItem("business");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed?.goal != null) {
-          setGoal(parseGoal(parsed.goal));
-        }
-      } catch {}
+    if (!isOwner) {
+      console.log('👤 Usuario es prestador, saltando carga de business');
+      return;
     }
+
+    const loadBusinessData = async () => {
+      // Primero intentar desde cache
+      const cached = localStorage.getItem("business");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          console.log('💾 Business desde cache:', parsed);
+          setBusinessData(parsed);
+          if (parsed?.goal != null) {
+            setGoal(parseGoal(parsed.goal));
+          }
+          return;
+        } catch (e) {
+          console.warn('⚠️ Error parseando business desde cache:', e);
+        }
+      }
+
+      // Si no hay cache, cargar desde el servidor
+      const businessId = getBusinessId();
+      
+      if (!businessId) {
+        console.warn('⚠️ No hay businessId disponible');
+        return;
+      }
+
+      console.log('🔄 Cargando business desde servidor...', businessId);
+      
+      try {
+        const data = await getBusinessById(businessId);
+        console.log('✅ Business desde servidor:', data);
+        
+        setBusinessData(data);
+        localStorage.setItem('business', JSON.stringify(data));
+        
+        if (data?.goal != null) {
+          setGoal(parseGoal(data.goal));
+        }
+      } catch (err) {
+        console.error('❌ Error cargando business:', err);
+      }
+    };
+
+    loadBusinessData();
+  }, [user, isOwner]);
+
+  // Escuchar cambios en localStorage
+  useEffect(() => {
+    if (!isOwner) return;
 
     const onStorage = (e) => {
       if (e.key === "business" && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
+          console.log('🔄 Business actualizado desde storage event:', parsed);
+          setBusinessData(parsed);
           if (parsed?.goal != null) {
             setGoal(parseGoal(parsed.goal));
           }
@@ -114,160 +197,139 @@ export const Finance = () => {
         }
       }
     };
+    
     window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [isOwner]);
 
-    return () => {
-      window.removeEventListener("storage", onStorage);
-    };
-  }, [userId]);
-
-  // Resumen y movimientos
+  // ============================================
+  // CARGAR RESUMEN Y MOVIMIENTOS
+  // ============================================
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError("");
+
+        const userId = getUserId();
+        const businessId = getBusinessId();
+
+        console.log('📊 Finance - IDs disponibles:', { userId, businessId, role: userRole, isOwner });
+
+        // Validación: necesitamos userId para prestadores, businessId para propietarios
+        if (isOwner && !businessId) {
+          throw new Error('No se encontró el ID de negocio. Por favor, cierra sesión y vuelve a iniciar.');
+        }
         
-        // Cargar el resumen usando el servicio correcto
-        const summaryData = await getDailySummaryService();
-        
-        console.log('📊 Summary data recibido:', summaryData);
-        
-        if (summaryData) {
-          setSummary(summaryData);
-          localStorage.setItem("financeSummary", JSON.stringify(summaryData));
+        if (!isOwner && !userId) {
+          throw new Error('No se encontró tu ID de usuario. Por favor, cierra sesión y vuelve a iniciar.');
         }
 
-        // 🔹 LÓGICA DIFERENCIADA POR ROL
-        if (isOwner) {
-          // 👔 PROPIETARIO: Obtener movimientos del negocio completo
-          let businessId = null;
+        // 1. Obtener resumen (funciona para ambos roles)
+        console.log('📊 Obteniendo resumen diario del backend...');
+        
+        try {
+          const summaryData = await getDailySummaryService();
+          console.log('✅ Resumen recibido:', summaryData);
           
-          try {
-            const cachedBusiness = localStorage.getItem("business");
-            if (cachedBusiness) {
-              const parsed = JSON.parse(cachedBusiness);
-              businessId = parsed?._id || parsed?.id;
-            }
-          } catch (e) {
-            console.warn('⚠️ Error parseando business desde localStorage');
+          if (summaryData) {
+            setSummary(summaryData);
+            localStorage.setItem("financeSummary", JSON.stringify(summaryData));
           }
-          
-          // Fallback: intentar desde user
-          if (!businessId) {
-            businessId = user?.businessId || user?.business?._id || user?.business?.id;
+        } catch (summaryError) {
+          console.error('❌ Error obteniendo resumen:', summaryError);
+          // Si es 401, dejar que el interceptor lo maneje
+          if (summaryError?.response?.status !== 401) {
+            // Solo mostrar error si NO es 401
+            console.warn('⚠️ Continuando sin resumen...');
           }
-          
-          console.log('🏢 Business ID encontrado:', businessId);
+        }
 
-          if (businessId) {
-            try {
-              console.log('🔄 Cargando movimientos del negocio completo...');
-              
-              // Importar el servicio
-              const { getBusinessFinanceSummary } = await import("@services/financeService");
-              
-              // Hacer 2 peticiones en paralelo
-              console.log('📞 Llamando a getBusinessFinanceSummary...');
-              const [ingresosData, egresosData] = await Promise.all([
-                getBusinessFinanceSummary(businessId, 'ingreso'),
-                getBusinessFinanceSummary(businessId, 'egreso')
-              ]);
+        // 2. Obtener movimientos según rol
+        console.log('📈 Obteniendo movimientos para gráfico...');
 
-              console.log('💰 Respuesta INGRESOS del negocio:', ingresosData);
-              console.log('💸 Respuesta EGRESOS del negocio:', egresosData);
+        try {
+          let allMovements = [];
 
-              // Combinar los movimientos
-              const allMovements = [
-                ...(Array.isArray(ingresosData) ? ingresosData.map(m => ({ ...m, type: 'ingreso' })) : []),
-                ...(Array.isArray(egresosData) ? egresosData.map(m => ({ ...m, type: 'egreso' })) : [])
-              ];
+          if (isOwner && businessId) {
+            console.log('🏢 Cargando movimientos del NEGOCIO COMPLETO...');
+            
+            const { getBusinessFinanceSummary } = await import("@services/financeService");
+            
+            console.log('📞 Llamando a getBusinessFinanceSummary con businessId:', businessId);
+            
+            const [ingresosData, egresosData] = await Promise.all([
+              getBusinessFinanceSummary(businessId, 'ingreso'),
+              getBusinessFinanceSummary(businessId, 'egreso')
+            ]);
 
-              console.log('📦 Total movimientos del negocio:', allMovements.length);
+            console.log('💰 INGRESOS recibidos:', ingresosData?.length || 0);
+            console.log('💸 EGRESOS recibidos:', egresosData?.length || 0);
 
-              if (allMovements.length > 0) {
-                const filteredMovements = filterMovementsByPeriod(allMovements, chartPeriod);
-                console.log('🔍 Movimientos filtrados (negocio):', filteredMovements.length);
-                
-                const chartDataResult = buildChartFromMovements(filteredMovements);
-                console.log('📊 Datos para gráfica (negocio):', chartDataResult);
-                
-                setChartData(chartDataResult);
-              } else {
-                console.warn('⚠️ No se encontraron movimientos del negocio');
-                setChartData([]);
-              }
+            allMovements = [
+              ...(Array.isArray(ingresosData) ? ingresosData.map(m => ({ ...m, type: 'ingreso' })) : []),
+              ...(Array.isArray(egresosData) ? egresosData.map(m => ({ ...m, type: 'egreso' })) : [])
+            ];
+          } else if (!isOwner && userId) {
+            console.log('👤 Cargando movimientos del USUARIO (prestador)...');
+            
+            const { getUserFinanceSummary } = await import("@services/financeService");
+            
+            console.log('📞 Llamando a getUserFinanceSummary con userId:', userId);
+            
+            const movementsData = await getUserFinanceSummary(userId);
 
-            } catch (err) {
-              console.error('❌ Error al cargar movimientos del negocio:', err);
-              setChartData([]);
-            }
+            console.log('📦 Movimientos de usuario recibidos:', movementsData?.length || 0);
+            allMovements = Array.isArray(movementsData) ? movementsData : [];
+          }
+
+          console.log('📦 Total movimientos obtenidos:', allMovements.length);
+
+          if (allMovements.length > 0) {
+            const filteredMovements = filterMovementsByPeriod(allMovements, chartPeriod);
+            console.log('🔍 Movimientos filtrados por período:', filteredMovements.length);
+            
+            const chartDataResult = buildChartFromMovements(filteredMovements);
+            console.log('📊 Datos procesados para gráfico:', chartDataResult.length, 'puntos');
+            
+            setChartData(chartDataResult);
           } else {
-            console.error('❌ No se pudo obtener el businessId');
+            console.log('⚠️ No hay movimientos disponibles');
             setChartData([]);
           }
-        } else {
-          // 👤 PRESTADOR DE SERVICIOS: Obtener solo sus movimientos
-          console.log('👤 Cargando movimientos del usuario (prestador)...');
-          
-          if (userId) {
-            try {
-              // Importar el servicio
-              const { getUserFinanceSummary } = await import("@services/financeService");
-              
-              // Obtener todos los movimientos del usuario en una sola llamada
-              console.log('📞 Llamando a getUserFinanceSummary...');
-              const movementsData = await getUserFinanceSummary(userId);
-
-              console.log('📦 Respuesta de movimientos del usuario:', movementsData);
-
-              // Los movimientos ya vienen con su tipo del backend
-              const allMovements = Array.isArray(movementsData) ? movementsData : [];
-
-              console.log('📦 Total movimientos del usuario:', allMovements.length);
-
-              if (allMovements.length > 0) {
-                const filteredMovements = filterMovementsByPeriod(allMovements, chartPeriod);
-                console.log('🔍 Movimientos filtrados (usuario):', filteredMovements.length);
-                
-                const chartDataResult = buildChartFromMovements(filteredMovements);
-                console.log('📊 Datos para gráfica (usuario):', chartDataResult);
-                
-                setChartData(chartDataResult);
-              } else {
-                console.warn('⚠️ No se encontraron movimientos del usuario');
-                setChartData([]);
-              }
-
-            } catch (err) {
-              console.error('❌ Error al cargar movimientos del usuario:', err);
-              setChartData([]);
-            }
-          } else {
-            console.error('❌ No se pudo obtener el userId');
+        } catch (movementsError) {
+          console.error('❌ Error obteniendo movimientos:', movementsError);
+          // Si es 401, dejar que el interceptor lo maneje
+          if (movementsError?.response?.status !== 401) {
             setChartData([]);
           }
         }
 
-      } catch (error) {
-        console.error("❌ Error en Finance:", error);
+      } catch (err) {
+        console.error("❌ Error en Finance:", err);
+        setError(err.message || "Error al cargar información financiera");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [todayDate, chartPeriod, user, userId, isOwner]);
+    if (user) {
+      fetchData();
+    }
+  }, [todayDate, chartPeriod, user, isOwner]);
 
   // Cargar miembros del equipo (solo para propietarios)
   useEffect(() => {
-    if (!isOwner) return;
+    if (!isOwner) {
+      console.log('👤 Usuario no es propietario, saltando carga de equipo');
+      return;
+    }
 
     const loadTeamMembers = async () => {
       setLoadingTeam(true);
       try {
         const employeesData = await getEmployees();
         
-        // Obtener los movimientos de cada empleado para calcular ingresos
         const { axiosApi } = await import("@services/axiosclient");
         
         const employeesWithData = await Promise.all(
@@ -281,9 +343,6 @@ export const Finance = () => {
               );
               const movements = movementsRes?.data?.data || movementsRes?.data || [];
               
-              console.log(`📊 Movimientos de ${emp.name} en Finance:`, movements);
-              
-              // Calcular ingresos del mes actual
               const now = new Date();
               const currentMonth = now.getMonth();
               const currentYear = now.getFullYear();
@@ -298,8 +357,6 @@ export const Finance = () => {
                   );
                 })
                 .reduce((sum, m) => sum + Number(m.value || 0), 0);
-              
-              console.log(`💰 Ingresos del mes de ${emp.name}:`, ingresosDelMes);
               
               return { 
                 ...emp, 
@@ -330,34 +387,83 @@ export const Finance = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white">
-        ⏳ Cargando Finanzas...
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#0f172a]">
+        <div className="text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-pink-500 animate-spin" style={{ animationDuration: '1.5s' }}></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <BarChart className="w-8 h-8 text-purple-400 animate-pulse" />
+            </div>
+          </div>
+          
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
+            Cargando Finanzas
+          </h2>
+          <p className="text-white/60 text-sm">Preparando tu información financiera...</p>
+          
+          <div className="flex justify-center gap-2 mt-4">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // ============================================
-  // EXTRAER DATOS DEL SUMMARY (Nueva estructura)
-  // ============================================
+  // Si hay error y no hay datos
+  if (error && !summary) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#0f172a]">
+        <div className="text-center">
+          <div className="bg-gradient-to-br from-red-900/40 to-red-950/60 border-2 border-red-500/30 rounded-2xl p-8 max-w-md">
+            <p className="text-red-400 text-xl font-semibold mb-4">❌ {error}</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl transition-all text-white font-semibold shadow-lg hover:scale-105"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={logout}
+                className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl transition-all text-white font-semibold"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // Estadísticas del día
+  // Estadísticas (con valores por defecto si no hay summary)
   const dayStatistics = summary?.dayStatistics || {};
   const totalTransactionsDay = dayStatistics?.totalTransactionsDay || {};
   
   const incomesToday = Number(totalTransactionsDay?.incomes || 0);
   const expensesToday = Number(totalTransactionsDay?.expenses || 0);
 
-  // Estadísticas del mes
   const monthStatistics = summary?.monthStatistics || {};
   const totalTransactionsMonth = monthStatistics?.totalTransactionsMonth || {};
   
   const ingresosMonth = Number(totalTransactionsMonth?.incomes || 0);
   const egresosMonth = Number(totalTransactionsMonth?.expenses || 0);
 
-  // Balance Mensual (desde el backend)
+  const yearStatistics = summary?.yearStatistics || {};
+  const totalTransactionsYear = yearStatistics?.totalTransactionsYear || {};
+  
+  const ingresosYear = Number(totalTransactionsYear?.incomes || 0);
+  const egresosYear = Number(totalTransactionsYear?.expenses || 0);
+
+  const profitMargin = Number(summary?.profitMargin || 0);
+  const balanceYear = ingresosYear - egresosYear;
+
   const balanceMensual = Number(monthStatistics?.monthBalance || 0);
 
-  // Meta Mensual
   const safeGoal = parseGoal(goal);
   const percentage = safeGoal > 0 ? Math.min((ingresosMonth / safeGoal) * 100, 100) : 0;
 
@@ -367,31 +473,21 @@ export const Finance = () => {
 
   const isOk = ingresosMonth >= egresosMonth;
 
-  console.log('📊 Datos extraídos del summary en Finance:', {
-    incomesToday,
-    expensesToday,
-    ingresosMonth,
-    egresosMonth,
-    balanceMensual,
-    safeGoal,
-    percentage
-  });
-
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-10 text-white">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-10 text-white">
       {/* HEADER */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-2 mb-6 sm:mb-8">
         <BarChart size={16} className="text-white/70" />
         <h1 className="text-lg font-semibold text-white/80">Finanzas</h1>
       </div>
 
       {/* GRID: Resumen + Meta + Alerta */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Panel Resumen - AHORA MUESTRA BALANCE MENSUAL */}
-        <div className="flex flex-col md:flex-row justify-between lg:col-span-2 bg-[#0f172a] rounded-xl border border-white/10 p-6 shadow gap-6">
-          <div>
-            {/* Balance del Mes */}
-            <h2 className={`text-4xl font-bold mb-1 ${
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+        {/* Panel Resumen */}
+        <div className="xl:col-span-2 bg-[#0f172a] rounded-xl border border-white/10 p-4 sm:p-6 shadow">
+          {/* Balance del Mes */}
+          <div className="mb-6">
+            <h2 className={`text-3xl sm:text-4xl font-bold mb-1 ${
               balanceMensual >= 0 ? 'text-green-400' : 'text-red-400'
             }`}>
               {balanceMensual >= 0 
@@ -400,7 +496,9 @@ export const Finance = () => {
               }
             </h2>
             <p className="text-xs text-white/70 mb-4">Balance del Mes</p>
-            <div className="flex items-center gap-6">
+            
+            {/* Ingresos y Egresos */}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
               <div className="flex flex-col">
                 <span className="text-green-400 text-sm font-semibold">
                   + ${ingresosMonth.toLocaleString()}
@@ -416,24 +514,27 @@ export const Finance = () => {
             </div>
           </div>
 
-          {/* Meta Mensual con gráfico circular */}
-          <div className="flex items-center gap-4 md:gap-6">
-            <div className="relative w-24 h-24">
+          {/* Separador */}
+          <div className="border-t border-white/10 my-4"></div>
+
+          {/* Meta Mensual */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
               <svg className="w-full h-full transform -rotate-90">
                 <circle
-                  cx="48"
-                  cy="48"
-                  r={circleRadius}
+                  cx="50%"
+                  cy="50%"
+                  r="38%"
                   strokeWidth="6"
                   stroke="#1f2937"
                   fill="transparent"
                 />
                 <circle
-                  cx="48"
-                  cy="48"
-                  r={circleRadius}
+                  cx="50%"
+                  cy="50%"
+                  r="38%"
                   strokeWidth="6"
-                  stroke="#8b5cf6"
+                  stroke={percentage >= 100 ? "#10b981" : "#8b5cf6"}
                   fill="transparent"
                   strokeDasharray={circleCircumference}
                   strokeDashoffset={progress}
@@ -441,25 +542,25 @@ export const Finance = () => {
                 />
               </svg>
               <span className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold">
+                <span className={`text-base sm:text-lg font-bold ${percentage >= 100 ? 'text-emerald-400' : ''}`}>
                   {Math.round(percentage)}%
                 </span>
-                <span className="text-[10px] text-white/70">Completado</span>
               </span>
             </div>
-            <div>
-              <h3 className="text-sm font-bold mb-1">Meta Mensual</h3>
-              <p className="text-2xl text-green-400 font-bold mb-1">
+
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <h3 className="text-xs font-semibold text-white/70 mb-1">Meta Mensual</h3>
+              <p className="text-xl sm:text-2xl text-green-400 font-bold mb-1">
                 ${safeGoal.toLocaleString()}
               </p>
-              <p className="text-xs text-white/50 leading-snug mb-3">
-                Llevas un total de {Math.round(percentage)}% completado
+              <p className="text-xs text-white/50 mb-3">
+                Llevas {Math.round(percentage)}% de tu meta
               </p>
               <button
                 onClick={() => navigate("/dashboard/agregar-movimiento")}
-                className="flex items-center justify-center gap-2 text-xs bg-white text-black px-4 py-1.5 rounded-full font-semibold shadow hover:opacity-90 transition"
+                className="inline-flex items-center justify-center gap-1.5 text-xs bg-white text-black px-4 py-2 rounded-full font-semibold shadow hover:opacity-90 transition"
               >
-                Agregar Movimiento
+                + Agregar Movimiento
               </button>
             </div>
           </div>
@@ -467,30 +568,65 @@ export const Finance = () => {
 
         {/* Panel: Alerta */}
         <div
-          className={`rounded-xl p-5 shadow border ${
-            isOk ? "bg-[#14532d] border-green-800" : "bg-[#991b1b] border-red-800"
+          className={`rounded-xl p-4 sm:p-6 shadow-lg border transition-all ${
+            isOk 
+              ? "bg-gradient-to-br from-emerald-900/40 to-emerald-950/60 border-emerald-700/50" 
+              : "bg-gradient-to-br from-red-900/40 to-red-950/60 border-red-700/50"
           }`}
         >
-          <div className="flex items-center gap-2 mb-1 text-white">
-            <AlertTriangle size={18} /> <span className="font-semibold">Shain</span>
+          <div className="flex items-center gap-3 mb-3">
+            {isOk ? (
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle size={20} className="text-emerald-400" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-red-400" />
+              </div>
+            )}
+            <span className="font-bold text-lg text-white">Shain</span>
           </div>
-          <p className="text-sm">
-            {isOk
-              ? "Todo en orden: los ingresos superan (o igualan) los egresos."
-              : "Alerta: Los egresos están superando los ingresos."}
+          
+          <h4 className={`text-base font-semibold mb-2 ${
+            isOk ? "text-emerald-300" : "text-red-300"
+          }`}>
+            {isOk ? "✓ Todo en orden" : "⚠ Alerta financiera"}
+          </h4>
+          
+          <p className="text-xs sm:text-sm text-white/90 leading-relaxed mb-3">
+            {isOk ? (
+              <>
+                Los ingresos superan los egresos.
+                <br />
+                ¡Excelente gestión!
+              </>
+            ) : (
+              <>
+                Los egresos están superando
+                <br />
+                los ingresos este mes.
+              </>
+            )}
           </p>
-          <p className="text-xs text-white/80 mt-1">Reporte del mes actual</p>
-          <p className="text-xs text-white/60">
-            {isOk
-              ? "Continúa con la estrategia actual"
-              : "Se recomienda generar nuevos ingresos"}
-          </p>
+          
+          <div className={`mt-4 pt-4 border-t ${
+            isOk ? "border-emerald-700/30" : "border-red-700/30"
+          }`}>
+            <p className="text-xs text-white/70 font-medium mb-1">Reporte del mes actual</p>
+            <p className={`text-xs font-semibold ${
+              isOk ? "text-emerald-400" : "text-red-400"
+            }`}>
+              {isOk
+                ? "→ Continúa con la estrategia actual"
+                : "→ Se recomienda generar nuevos ingresos"}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* SECCIÓN: METAS DEL EQUIPO (Solo para propietarios) */}
       {isOwner && (
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-slate-700 p-6 mb-6 shadow-md">
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-slate-700 p-4 sm:p-6 mb-6 shadow-md">
           <div className="flex items-center gap-2 mb-4">
             <Users size={20} className="text-purple-400" />
             <h3 className="text-lg font-semibold text-white">Metas del Equipo</h3>
@@ -505,9 +641,8 @@ export const Finance = () => {
               No hay miembros registrados en el equipo.
             </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {teamMembers.map((member) => {
-                // ✅ Usar ingresosDelMes calculado desde movements
                 const memberIngresos = member.ingresosDelMes ?? 0;
                 const memberGoal = member.goal ?? 0;
                 const memberPercentage = memberGoal > 0 
@@ -541,16 +676,15 @@ export const Finance = () => {
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-slate-400">Ingresos:</span>
-                        <span className="text-emerald-400 font-semibold">
+                        <span className={`font-semibold ${memberPercentage >= 100 ? 'text-emerald-400' : 'text-emerald-400'}`}>
                           ${memberIngresos.toLocaleString("es-CO")}
                         </span>
                       </div>
 
-                      {/* Barra de progreso */}
                       <div className="mt-3">
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-slate-400">Progreso</span>
-                          <span className="text-purple-400 font-semibold">
+                          <span className={`font-semibold ${memberPercentage >= 100 ? 'text-emerald-400' : 'text-purple-400'}`}>
                             {Math.round(memberPercentage)}%
                           </span>
                         </div>
@@ -579,14 +713,13 @@ export const Finance = () => {
       )}
 
       {/* GRÁFICA */}
-      <div className="bg-gradient-to-b from-[#0f172a] to-black rounded-xl border border-white/10 p-6 mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+      <div className="bg-gradient-to-b from-[#0f172a] to-black rounded-xl border border-white/10 p-4 sm:p-6 mb-6">
+        <div className="flex flex-col gap-4 mb-4">
           <h3 className="text-sm font-semibold">
             Ingresos vs Egresos
           </h3>
           
-          {/* Filtro de período */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setChartPeriod("7days")}
               className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
@@ -595,7 +728,7 @@ export const Finance = () => {
                   : "bg-white/10 text-white/70 hover:bg-white/20"
               }`}
             >
-              7 días
+              Semana actual
             </button>
             <button
               onClick={() => setChartPeriod("month")}
@@ -605,7 +738,7 @@ export const Finance = () => {
                   : "bg-white/10 text-white/70 hover:bg-white/20"
               }`}
             >
-              Mes actual
+              Mes
             </button>
             <button
               onClick={() => setChartPeriod("year")}
@@ -630,30 +763,35 @@ export const Finance = () => {
           </div>
         </div>
 
-        <div className="bg-black/20 rounded-xl p-6">
+        <div className="bg-black/20 rounded-xl p-3 sm:p-6">
           {chartData.length > 0 ? <Chart data={chartData} /> : (
-            <p className="text-center text-white/60">📊 Sin datos disponibles para este período</p>
+            <p className="text-center text-white/60 py-8">Sin datos disponibles para este período</p>
           )}
         </div>
       </div>
 
       {/* Mini Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mt-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 sm:mt-10">
         <MiniCardChart
-          title="Ingresos Totales"
-          value={`$${Number(ingresosMonth).toLocaleString()}`}
-          percent={5}
+          title="Ingresos Totales del Año"
+          value={`$${Number(ingresosYear).toLocaleString("es-CO")}`}
           color="green"
           icon={<TrendingUp size={14} />}
           data={chartData.map((d) => ({ value: d.Ingresos }))}
         />
         <MiniCardChart
-          title="Gastos Totales"
-          value={`-$${Number(egresosMonth).toLocaleString()}`}
-          percent={-15}
+          title="Gastos Totales del Año"
+          value={`$${Number(egresosYear).toLocaleString("es-CO")}`}
           color="red"
           icon={<TrendingDown size={14} />}
           data={chartData.map((d) => ({ value: d.Egresos }))}
+        />
+        <MiniCardChart
+          title="Margen de Beneficio"
+          value={`$${Math.abs(balanceYear).toLocaleString("es-CO")}`}
+          color="blue"
+          icon={balanceYear >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+          data={chartData.map((d) => ({ value: d.Ingresos - d.Egresos }))}
         />
       </div>
     </div>

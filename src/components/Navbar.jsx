@@ -1,14 +1,15 @@
 // src/components/Navbar.jsx
-import { Bell, Plus, User as UserIcon, LogOut } from "lucide-react";
+import { Plus, User as UserIcon, LogOut, Loader2 } from "lucide-react";
 import appLogo from "@assets/logo.png";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useAuth } from "@context/AuthContext";
 
 export const Navbar = ({ setOpen }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [imgError, setImgError] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const name = useMemo(() => {
     if (!user) return "Usuario";
@@ -39,11 +40,29 @@ export const Navbar = ({ setOpen }) => {
     ? `${rawLogo}${user?.logoUpdatedAt ? `?v=${user.logoUpdatedAt}` : ""}`
     : null;
 
-  const formattedDate = new Date().toLocaleDateString("es-CO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  // ✅ Handler de logout con protección contra múltiples clicks
+  const handleLogout = useCallback(async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Evitar múltiples clicks
+    if (isLoggingOut) {
+      console.log("[Navbar] Logout ya en progreso, ignorando click");
+      return;
+    }
+    
+    setIsLoggingOut(true);
+    console.log("[Navbar] Iniciando logout...");
+    
+    try {
+      await logout();
+    } catch (err) {
+      console.error("[Navbar] Error en logout:", err);
+      // Forzar redirección si falla
+      window.location.href = "/#/login";
+    }
+    // No reseteamos isLoggingOut porque la página va a cambiar de todos modos
+  }, [logout, isLoggingOut]);
 
   return (
     <header className="w-full bg-[#242222] shadow px-4 py-3 flex items-center justify-between fixed top-0 z-50">
@@ -55,18 +74,8 @@ export const Navbar = ({ setOpen }) => {
         </button>
       </div>
 
-      {/* Saludo */}
-      <div className="hidden md:block text-sm text-white">
-        Hola {name}, este es tu resumen de {formattedDate}
-      </div>
-
       {/* Acciones */}
       <div className="flex items-center space-x-4">
-        <button onClick={() => navigate("/dashboard/notificaciones")} className="relative" title="Notificaciones">
-          <Bell className="w-5 h-5 text-gray-300" />
-          <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500" />
-        </button>
-
         {/* Avatar: logo si hay; si falla, iniciales; si no, ícono */}
         {avatarSrc && !imgError ? (
           <button
@@ -97,15 +106,29 @@ export const Navbar = ({ setOpen }) => {
           </button>
         )}
 
+        {/* ✅ Botón de logout con protección */}
         <button
-          onClick={logout}
-          className="flex items-center gap-1 text-gray-300 hover:text-red-400 transition"
-          title="Cerrar sesión"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className={`flex items-center gap-1 transition ${
+            isLoggingOut 
+              ? "text-gray-500 cursor-not-allowed" 
+              : "text-gray-300 hover:text-red-400"
+          }`}
+          title={isLoggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
         >
-          <LogOut className="w-5 h-5" />
-          <span className="hidden md:inline text-xs">Salir</span>
+          {isLoggingOut ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <LogOut className="w-5 h-5" />
+          )}
+          <span className="hidden md:inline text-xs">
+            {isLoggingOut ? "Saliendo..." : "Salir"}
+          </span>
         </button>
       </div>
     </header>
   );
 };
+
+export default Navbar;

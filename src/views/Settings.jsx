@@ -2,6 +2,7 @@
 // Settings.jsx
 // ============================================
 import { useEffect, useState } from 'react';
+import { Building2, Target, FileText, Upload, Copy, Check, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import logoFallback from '@assets/logo.png';
 import { getBusinessById, saveBusinessFD } from '@services/businessService';
 import { useAuth } from '@context/AuthContext';
@@ -9,7 +10,6 @@ import { useAuth } from '@context/AuthContext';
 export const Settings = () => {
   const { user, updateUser } = useAuth() || { user: null, updateUser: () => {} };
   const userRole = user?.role || '';
-  // ✅ Corregido: el ID está en user.business, no en user.businessId
   const businessId = user?.business || user?.businessId || '';
 
   console.log('👤 Usuario:', user);
@@ -32,6 +32,35 @@ export const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Formatear número con separadores de miles
+  const formatGoal = (value) => {
+    const digits = String(value || '').replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return Number(digits).toLocaleString('es-CO');
+  };
+
+  // Validar campos requeridos
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!business.name || !business.name.trim()) {
+      errors.name = 'El nombre del negocio es requerido';
+    }
+    
+    if (!business.type || !business.type.trim()) {
+      errors.type = 'El tipo de negocio es requerido';
+    }
+    
+    if (!business.goal || !String(business.goal).trim()) {
+      errors.goal = 'La meta mensual es requerida';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Cargar desde localStorage
   useEffect(() => {
@@ -108,6 +137,16 @@ export const Settings = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Limpiar error de validación cuando el usuario escribe
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+    
     if (name === 'goal') {
       const digits = value.replace(/[^\d]/g, ''); 
       setBusiness((prev) => ({ ...prev, goal: digits }));
@@ -127,10 +166,18 @@ export const Settings = () => {
   const handleCopyCode = () => {
     if (!business.code) return;
     navigator.clipboard.writeText(business.code);
+    setCopied(true);
     setToast({ type: 'success', message: 'Código copiado ✅' });
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSaveAll = async () => {
+    // Validar antes de guardar
+    if (!validateForm()) {
+      setToast({ type: 'error', message: 'Por favor completa los campos requeridos' });
+      return;
+    }
+    
     if (!business.id) {
       setToast({ type: 'error', message: 'ID no encontrado.' });
       return;
@@ -171,10 +218,26 @@ export const Settings = () => {
 
   if (loading) {
     return (
-      <div className="w-full max-w-3xl mx-auto px-4 py-10 text-white">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
-          <span>Cargando información del negocio…</span>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#0f172a]">
+        <div className="text-center">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-pink-500 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <SettingsIcon className="w-6 h-6 text-purple-400 animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
+            Cargando Configuración
+          </h2>
+          <p className="text-white/60 text-sm">Obteniendo datos del negocio...</p>
+          
+          <div className="flex justify-center gap-2 mt-4">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         </div>
       </div>
     );
@@ -182,14 +245,17 @@ export const Settings = () => {
 
   if (error) {
     return (
-      <div className="w-full max-w-3xl mx-auto px-4 py-10">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
-          <h2 className="text-red-400 font-semibold text-lg mb-2">Error</h2>
-          <p className="text-red-300">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#0f172a] px-4">
+        <div className="bg-gradient-to-br from-red-900/40 to-red-950/60 border border-red-500/30 rounded-xl p-6 max-w-lg">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-red-400 font-bold text-lg text-center mb-2">Error</h2>
+          <p className="text-red-300 text-sm text-center">{error}</p>
           {!businessId && (
-            <div className="mt-4 text-sm text-red-200/70">
-              <p>Debug info:</p>
-              <pre className="bg-black/30 p-3 rounded text-xs overflow-auto mt-2">
+            <div className="mt-4 text-xs text-red-200/70">
+              <p className="font-semibold mb-2">Debug info:</p>
+              <pre className="bg-black/30 p-3 rounded-lg text-[10px] overflow-auto border border-red-500/20">
                 {JSON.stringify({ 
                   hasUser: !!user, 
                   businessId, 
@@ -205,117 +271,237 @@ export const Settings = () => {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-10 text-white space-y-8">
-      <div className="flex items-center gap-2 text-sm font-semibold text-white/70">
-        ⚙️ <span>Configuración</span>
-      </div>
-      <h1 className="text-3xl md:text-4xl font-extrabold">Información del negocio</h1>
-
-      <div className="flex flex-col md:flex-row md:items-start gap-10">
-        {/* Logo */}
-        <div className="flex flex-col gap-4">
-          <img
-            src={logoPreview || business.image || logoFallback}
-            alt="Logo"
-            className="w-44 h-44 object-contain bg-white rounded-md p-4"
-          />
-          <label className="text-sm underline text-white/80 hover:text-white cursor-pointer">
-            <input type="file" accept="image/*" className="hidden" onChange={handlePickLogo} />
-            Seleccionar logo
-          </label>
-          {pendingLogo && <p className="text-xs text-white/60">Logo listo para guardar.</p>}
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] px-3 sm:px-4 py-6 sm:py-10">
+      <div className="w-full max-w-5xl mx-auto space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-4 sm:mb-6">
+          <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+          <h1 className="text-xl sm:text-2xl md:text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+            Configuración
+          </h1>
         </div>
 
-        {/* Form */}
-        <div className="flex-1 flex flex-col gap-4">
-          {/* Código del negocio */}
-          {userRole === 'propietario_negocio' && business.code && (
-            <div className="bg-[#0b0f19] border border-white/20 rounded-lg p-4">
-              <label className="block text-sm mb-2 font-medium text-white/90">
-                🔑 Código del negocio
+        {/* Código del negocio - Compacto en móvil */}
+        {userRole === 'propietario_negocio' && business.code && (
+          <div className="bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/20 rounded-xl p-3 sm:p-5">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
+              </div>
+              <label className="text-sm sm:text-base font-bold text-white">
+                Código del negocio
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={business.code}
-                  readOnly
-                  className="flex-1 px-4 py-2 rounded-md bg-black/40 border border-white/10 text-white font-mono text-lg tracking-wider select-all"
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={business.code}
+                readOnly
+                className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-black/40 border border-white/10 text-white font-mono text-sm sm:text-lg tracking-wider select-all focus:outline-none"
+              />
+              <button
+                onClick={handleCopyCode}
+                className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 text-xs sm:text-sm flex-shrink-0 ${
+                  copied
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Copiado</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Copiar</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="text-[10px] sm:text-xs text-purple-200/60 mt-2">
+              Comparte este código para que otros se unan
+            </p>
+          </div>
+        )}
+
+        {/* Grid principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Logo - Compacto en móvil */}
+          <div className="lg:col-span-1">
+            <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-3 sm:p-5 border border-white/10">
+              <h3 className="text-sm sm:text-base font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-purple-400" />
+                Logo del negocio
+              </h3>
+              
+              <div className="relative group">
+                <img
+                  src={logoPreview || business.image || logoFallback}
+                  alt="Logo"
+                  className="w-full max-w-[120px] sm:max-w-none mx-auto aspect-square object-contain bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 border border-white/10"
                 />
+                <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-lg sm:rounded-xl">
+                  <div className="text-center">
+                    <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-white mx-auto mb-1" />
+                    <span className="text-white font-semibold text-xs sm:text-sm">Cambiar</span>
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePickLogo} />
+                </label>
+              </div>
+              
+              {pendingLogo && (
+                <div className="mt-2 sm:mt-3 bg-green-500/20 border border-green-500/30 rounded-lg p-2">
+                  <p className="text-[10px] sm:text-xs text-green-300 flex items-center gap-1.5">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                    Logo listo para guardar
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Formulario */}
+          <div className="lg:col-span-2">
+            <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10">
+              <h3 className="text-sm sm:text-base font-bold text-white mb-4 sm:mb-5 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-purple-400" />
+                Información del negocio
+              </h3>
+
+              <div className="space-y-4 sm:space-y-5">
+                {/* Nombre del negocio */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                    Nombre del negocio <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={business.name}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2.5 rounded-lg bg-white/5 border text-white text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all ${
+                      validationErrors.name 
+                        ? 'border-red-500/50 focus:ring-red-500/50' 
+                        : 'border-white/10'
+                    }`}
+                    placeholder="Ej: Mi Barbería"
+                  />
+                  {validationErrors.name && (
+                    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {validationErrors.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Tipo de negocio */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
+                    <FileText className="w-3.5 h-3.5 text-purple-400" />
+                    Tipo de negocio <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="type"
+                    value={business.type}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2.5 rounded-lg bg-white/5 border text-white text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all ${
+                      validationErrors.type 
+                        ? 'border-red-500/50 focus:ring-red-500/50' 
+                        : 'border-white/10'
+                    }`}
+                    placeholder="Ej: Barbería, Peluquería, Spa"
+                  />
+                  {validationErrors.type && (
+                    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {validationErrors.type}
+                    </p>
+                  )}
+                </div>
+
+                {/* Meta mensual */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
+                    <Target className="w-3.5 h-3.5 text-purple-400" />
+                    Meta mensual <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 font-semibold">
+                      $
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      name="goal"
+                      value={formatGoal(business.goal)}
+                      onChange={handleChange}
+                      placeholder="0"
+                      className={`w-full pl-7 pr-3 py-2.5 rounded-lg bg-white/5 border text-white text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-semibold ${
+                        validationErrors.goal 
+                          ? 'border-red-500/50 focus:ring-red-500/50' 
+                          : 'border-white/10'
+                      }`}
+                    />
+                  </div>
+                  {validationErrors.goal && (
+                    <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {validationErrors.goal}
+                    </p>
+                  )}
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
+                    <FileText className="w-3.5 h-3.5 text-purple-400" />
+                    ¿Por qué esta meta importa?
+                  </label>
+                  <textarea
+                    name="description"
+                    value={business.description}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all resize-none"
+                    placeholder="Describe la importancia de alcanzar esta meta..."
+                  />
+                </div>
+
+                {/* Botón guardar */}
                 <button
-                  onClick={handleCopyCode}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md text-sm"
+                  onClick={handleSaveAll}
+                  disabled={saving}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-6 py-3 rounded-xl w-full transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  Copiar
+                  {saving ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Guardar cambios
+                    </>
+                  )}
                 </button>
               </div>
-              <p className="text-xs text-white/50 mt-2">
-                Comparte este código para que otros se unan
-              </p>
             </div>
-          )}
-
-          <div>
-            <label className="block text-sm mb-1">Nombre del negocio*</label>
-            <input
-              type="text"
-              name="name"
-              value={business.name}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-md bg-[#0b0f19] border border-white/10 text-white"
-            />
           </div>
-
-          <div>
-            <label className="block text-sm mb-1">Tipo de negocio*</label>
-            <input
-              type="text"
-              name="type"
-              value={business.type}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-md bg-[#0b0f19] border border-white/10 text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Meta mensual*</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              name="goal"
-              value={business.goal}
-              onChange={handleChange}
-              placeholder="Ej. 5000"
-              className="w-full px-4 py-2 rounded-md bg-[#0b0f19] border border-white/10 text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">¿Por qué esta meta importa?</label>
-            <textarea
-              name="description"
-              value={business.description}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-4 py-2 rounded-md bg-[#0b0f19] border border-white/10 text-white resize-none"
-              placeholder="Describe tu meta..."
-            />
-          </div>
-
-          <button
-            onClick={handleSaveAll}
-            disabled={saving}
-            className="bg-[#ff5a00] hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-2 rounded-full mt-4 w-max"
-          >
-            {saving ? 'Guardando…' : 'Guardar cambios'}
-          </button>
         </div>
       </div>
 
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-[9999] px-4 py-2 rounded-lg text-white shadow-lg
-            ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}
+          className={`fixed bottom-6 right-6 z-[9999] px-4 py-2.5 rounded-xl text-white shadow-2xl font-semibold text-sm border
+            ${toast.type === 'success' 
+              ? 'bg-green-500/20 border-green-500/30 text-green-300' 
+              : 'bg-red-500/20 border-red-500/30 text-red-300'}
             animate-[fadeIn_150ms_ease-out,fadeOut_300ms_ease-in_2200ms_forwards]`}
         >
           {toast.message}

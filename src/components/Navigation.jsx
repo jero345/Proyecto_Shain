@@ -22,17 +22,17 @@ import logo from "@assets/logo.png";
 const ALL_ITEMS = [
   // Provider + Owner
   { icon: <Home size={20} />, label: "Inicio", to: "/dashboard/home", roles: [ROLES.PROVIDER, ROLES.OWNER] },
-  { icon: <BarChart2 size={20} />, label: "Finanzas", to: "/dashboard/finanzas", roles: [ROLES.PROVIDER, ROLES.OWNER] },
   { icon: <PlusCircle size={20} />, label: "Agregar movimientos", to: "/dashboard/agregar-movimiento", roles: [ROLES.PROVIDER, ROLES.OWNER] },
-  { icon: <MessageCircle size={20} />, label: "ShainBot", to: "/dashboard/chatbot", roles: [ROLES.PROVIDER, ROLES.OWNER] },
+  { icon: <BarChart2 size={20} />, label: "Finanzas", to: "/dashboard/finanzas", roles: [ROLES.PROVIDER, ROLES.OWNER] },
   { icon: <FileText size={20} />, label: "Historial", to: "/dashboard/historial", roles: [ROLES.PROVIDER, ROLES.OWNER] },
+  { icon: <CalendarClock size={20} />, label: "Agendar Citas", to: "/dashboard/agendar-cita", roles: [ROLES.PROVIDER, ROLES.OWNER] },
+  { icon: <ClipboardList size={20} />, label: "Citas Agendadas", to: "/dashboard/citas", roles: [ROLES.PROVIDER, ROLES.OWNER] },
+  { icon: <MessageCircle size={20} />, label: "ShainBot", to: "/dashboard/chatbot", roles: [ROLES.PROVIDER, ROLES.OWNER] },
 
   // ✅ Solo OWNER
   { icon: <Users size={20} />, label: "Equipo", to: "/dashboard/employees", roles: [ROLES.OWNER] },
 
   // Agenda / Citas
-  { icon: <CalendarClock size={20} />, label: "Agendar Citas", to: "/dashboard/agendar-cita", roles: [ROLES.PROVIDER, ROLES.OWNER] },
-  { icon: <ClipboardList size={20} />, label: "Citas Agendadas", to: "/dashboard/citas", roles: [ROLES.PROVIDER, ROLES.OWNER] },
 
   // Configuraciones (todos)
   { icon: <SettingsIcon size={20} />, label: "Configuraciones", to: "/dashboard/configuraciones", roles: [ROLES.ADMIN, ROLES.OWNER] },

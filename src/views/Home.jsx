@@ -5,55 +5,118 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Chart } from "@components/Chart";
 import { getDailySummaryService, getMovementsForServiceProvider, getMovementsForBusinessOwner } from "@services/addMovementService";
+import { useAuth } from "@context/AuthContext";
+import { ROLES, normalizeRole } from "../constant/roles";
 
 export const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuth() || {};
+  const userRole = normalizeRole(user?.role || "");
+  
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const isOwner = userRole === ROLES.OWNER;
+
+  console.log('🏠 Home - Rol del usuario:', userRole, 'isOwner:', isOwner);
+
   useEffect(() => {
     console.log('🏠 Iniciando carga del Home...');
+    console.log('👤 Usuario:', user);
     fetchData();
-  }, []);
+  }, [user]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const userId = localStorage.getItem('user_id');
-      const businessId = localStorage.getItem('business_id');
+      // Obtener IDs desde múltiples fuentes
+      let userId = localStorage.getItem('user_id');
+      let businessId = localStorage.getItem('business_id');
 
-      console.log('👤 User ID:', userId);
-      console.log('🏢 Business ID:', businessId);
+      // Si no están en localStorage, intentar desde user
+      if (!userId) {
+        userId = user?.id || user?._id || user?.userId;
+        if (userId) {
+          localStorage.setItem('user_id', userId);
+        }
+      }
 
-      if (!userId && !businessId) {
-        throw new Error('No se encontró el ID del usuario o negocio.');
+      if (!businessId) {
+        const businessValue = user?.business || user?.businessId;
+        if (typeof businessValue === 'string') {
+          businessId = businessValue;
+          localStorage.setItem('business_id', businessId);
+        } else if (businessValue && typeof businessValue === 'object') {
+          businessId = businessValue.id || businessValue._id;
+          if (businessId) {
+            localStorage.setItem('business_id', businessId);
+          }
+        }
+      }
+
+      console.log('👤 User ID (final):', userId);
+      console.log('🏢 Business ID (final):', businessId);
+      console.log('🎭 Rol:', userRole, '| isOwner:', isOwner);
+
+      // Validación según rol
+      if (isOwner && !businessId) {
+        throw new Error('No se encontró el ID de negocio. Por favor, cierra sesión y vuelve a iniciar.');
+      }
+      
+      if (!isOwner && !userId) {
+        throw new Error('No se encontró tu ID de usuario. Por favor, cierra sesión y vuelve a iniciar.');
       }
 
       // 1. Obtener el resumen del backend
       console.log('📊 Obteniendo resumen diario del backend...');
-      const summaryData = await getDailySummaryService();
-      console.log('✅ Resumen recibido:', summaryData);
       
-      setSummary(summaryData);
+      try {
+        const summaryData = await getDailySummaryService();
+        console.log('✅ Resumen recibido:', summaryData);
+        setSummary(summaryData);
+      } catch (summaryError) {
+        console.error('❌ Error obteniendo resumen:', summaryError);
+        // Si es 401, el interceptor lo manejará
+        if (summaryError?.response?.status !== 401) {
+          console.warn('⚠️ Continuando sin resumen...');
+        }
+      }
 
-      // 2. Obtener movimientos para el gráfico
+      // 2. Obtener movimientos para el gráfico según ROL
       console.log('📈 Obteniendo movimientos para gráfico...');
-      const movements = userId
-        ? await getMovementsForServiceProvider(userId, '', 'month')
-        : await getMovementsForBusinessOwner(businessId, '', 'month');
+      
+      let movements = [];
+      
+      try {
+        if (!isOwner && userId) {
+          // PRESTADOR DE SERVICIO: Usar userId
+          console.log('📍 Obteniendo movimientos como PRESTADOR DE SERVICIO');
+          movements = await getMovementsForServiceProvider(userId, '', 'month');
+        } else if (isOwner && businessId) {
+          // PROPIETARIO: Usar businessId
+          console.log('📍 Obteniendo movimientos como PROPIETARIO DE NEGOCIO');
+          movements = await getMovementsForBusinessOwner(businessId, '', 'month');
+        }
 
-      console.log('✅ Movimientos recibidos:', movements?.length || 0);
+        console.log('✅ Movimientos recibidos:', movements?.length || 0);
 
-      if (movements?.length) {
-        const chart = buildChartFromMovements(movements);
-        console.log('📊 Datos procesados para gráfico:', chart);
-        setChartData(chart);
-      } else {
-        setChartData([]);
+        if (movements?.length) {
+          const chart = buildChartFromMovements(movements);
+          console.log('📊 Datos procesados para gráfico:', chart);
+          setChartData(chart);
+        } else {
+          setChartData([]);
+        }
+      } catch (movementsError) {
+        console.error('❌ Error obteniendo movimientos:', movementsError);
+        // Si es 401, el interceptor lo manejará
+        if (movementsError?.response?.status !== 401) {
+          setChartData([]);
+        }
       }
 
     } catch (err) {
@@ -105,12 +168,38 @@ export const Home = () => {
     });
   };
 
+  // Función para formatear porcentaje sin decimales innecesarios
+  const formatPercentage = (value) => {
+    const num = Number(value) || 0;
+    if (Number.isInteger(num)) {
+      return num.toString();
+    }
+    return Math.round(num).toString();
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#a32063] via-[#4b1d69] to-[#0b0b2f]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#0f172a]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-xl font-semibold">Cargando dashboard...</p>
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-pink-500 animate-spin" style={{ animationDuration: '1.5s' }}></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <HomeIcon className="w-10 h-10 text-purple-400 animate-pulse" />
+            </div>
+          </div>
+          
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
+            Cargando Dashboard
+          </h2>
+          <p className="text-white/60 text-sm">Preparando tu información...</p>
+          
+          <div className="flex justify-center gap-2 mt-4">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         </div>
       </div>
     );
@@ -118,25 +207,34 @@ export const Home = () => {
 
   if (error && !summary) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#a32063] via-[#4b1d69] to-[#0b0b2f]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a]  to-[#0f172a]">
         <div className="text-center">
-          <p className="text-red-400 text-xl font-semibold mb-4">❌ {error}</p>
-          <button
-            onClick={fetchData}
-            className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-lg transition text-white"
-          >
-            Reintentar
-          </button>
+          <div className="bg-gradient-to-br from-red-900/40 to-red-950/60 border-2 border-red-500/30 rounded-2xl p-8 max-w-md">
+            <p className="text-red-400 text-xl font-semibold mb-4">❌ {error}</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={fetchData}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl transition-all text-white font-semibold shadow-lg hover:scale-105"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = "/#/login";
+                }}
+                className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl transition-all text-white font-semibold"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ============================================
-  // EXTRAER DATOS DEL SUMMARY (Nueva estructura)
-  // ============================================
-
-  // Estadísticas del día
+  // Extraer datos del summary
   const dayStatistics = summary?.dayStatistics || {};
   const totalTransactionsDay = dayStatistics?.totalTransactionsDay || {};
   
@@ -147,7 +245,6 @@ export const Home = () => {
   const salesIncreaseAmountDay = Number(dayStatistics?.salesIncreaseAmountDay || 0);
   const salesGrowthPercentageDay = Number(dayStatistics?.salesGrowthPercentageDay || 0);
 
-  // Estadísticas del mes
   const monthStatistics = summary?.monthStatistics || {};
   const totalTransactionsMonth = monthStatistics?.totalTransactionsMonth || {};
   
@@ -155,99 +252,66 @@ export const Home = () => {
   const egresosMonth = Number(totalTransactionsMonth?.expenses || 0);
   const monthBalance = Number(monthStatistics?.monthBalance || 0);
 
-  // Margen de ganancia (desde el nivel principal)
   const profitMargin = Number(summary?.profitMargin || 0);
 
-  console.log('📊 Datos extraídos del summary:', {
-    totalDelDia,
-    incomesToday,
-    expensesToday,
-    ingresosMonth,
-    egresosMonth,
-    monthBalance,
-    salesGrowthPercentageDay,
-    profitMargin
-  });
-
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-[#a32063] via-[#4b1d69] to-[#0b0b2f] text-white px-4 py-10">
+    <div className="w-full min-h-screen bg-gradient-to-br from-[#0f172a]  to-[#0f172a] text-white px-4 py-10">
       <div className="w-full max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-2 text-sm text-white font-semibold mb-1">
-          <HomeIcon size={16} className="text-white/80" /> Inicio
+        {/* Header mejorado */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-1.5 h-12 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                Resumen
+              </h1>
+              <p className="text-white/60 mt-1"></p>
+            </div>
+          </div>
         </div>
-        <h1 className="text-5xl font-extrabold mb-8">Resumen</h1>
 
         {/* Tarjetas principales */}
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          {/* Total del día */}
-          <div className="flex items-center justify-between bg-[#421953]/80 p-6 rounded-xl border border-purple-700 shadow-md">
-            <div>
-              <p className="text-sm text-white/80 mb-1">Total del día</p>
-              <h2 className={`text-4xl font-extrabold ${
-                totalDelDia >= 0 ? 'text-green-300' : 'text-red-300'
-              }`}>
-                {totalDelDia >= 0 
-                  ? `+$${totalDelDia.toLocaleString()}` 
-                  : `-$${Math.abs(totalDelDia).toLocaleString()}`
-                }
-              </h2>
-              <div className="mt-3 text-xs text-white/70 space-y-1">
-                <p className="flex items-center gap-1">
-                  <span className="text-green-400">↑</span>
-                  Ingresos: ${incomesToday.toLocaleString()}
-                </p>
-                <p className="flex items-center gap-1">
-                  <span className="text-red-400">↓</span>
-                  Egresos: ${expensesToday.toLocaleString()}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col text-right ml-4">
-              <div className={`flex items-center justify-end gap-1 text-sm mb-1 ${
-                salesGrowthPercentageDay >= 0 ? 'text-green-300' : 'text-red-300'
-              }`}>
-                <ArrowUpRight size={16} className={salesGrowthPercentageDay < 0 ? 'rotate-90' : ''} />
-                {Math.abs(salesGrowthPercentageDay).toFixed(1)}% respecto ayer
-              </div>
-              <p className={`text-sm ${
-                salesIncreaseAmountDay >= 0 ? 'text-green-300' : 'text-red-300'
-              }`}>
-                {salesIncreaseAmountDay >= 0 ? 'Incremento' : 'Disminución'} de ${Math.abs(salesIncreaseAmountDay).toLocaleString()}
-              </p>
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Ingresos del día */}
+          <div className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-xl">
+            <p className="text-sm text-white/70 font-medium mb-3">Ingresos del día</p>
+            <h2 className="text-4xl font-extrabold text-emerald-400 mb-6">
+              +${incomesToday.toLocaleString()}
+            </h2>
+            <div className="pt-4 border-t border-white/10">
+              {salesGrowthPercentageDay > 0 && (
+                <div className="flex justify-end">
+                  <div className="flex flex-col items-end text-xs gap-1">
+                    <div className="flex items-center gap-1 font-semibold text-emerald-400">
+                      <ArrowUpRight size={14} />
+                      <span>{formatPercentage(salesGrowthPercentageDay)}% respecto al día anterior</span>
+                    </div>
+                    <span className="mt-1 text-emerald-400">
+                      Tus ventas incrementaron ${salesIncreaseAmountDay.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Totales del mes */}
-          <div className="bg-black/20 p-6 rounded-xl border border-white/10 flex flex-col justify-between">
-            <div>
-              <p className="text-white/80 font-bold mb-1">Ingresos del mes</p>
-              <p className="text-3xl font-bold text-green-300 mb-4">
+          {/* Columna derecha: Ingresos y Egresos del mes */}
+          <div className="flex flex-col gap-4">
+            {/* Ingresos del mes */}
+            <div className="bg-gradient-to-br from-emerald-900/40 to-emerald-950/60 backdrop-blur-xl p-5 rounded-2xl border border-emerald-500/30 shadow-xl">
+              <p className="text-sm text-emerald-300/90 font-medium mb-2">Ingresos del mes</p>
+              <p className="text-3xl font-extrabold text-emerald-400">
                 +${ingresosMonth.toLocaleString()}
               </p>
             </div>
-            <div>
-              <p className="text-white/80 font-bold mb-1">Egresos del mes</p>
-              <p className="text-3xl font-bold text-red-300 mb-4">
+
+            {/* Egresos del mes */}
+            <div className="bg-gradient-to-br from-rose-900/40 to-rose-950/60 backdrop-blur-xl p-5 rounded-2xl border border-rose-500/30 shadow-xl">
+              <p className="text-sm text-rose-300/90 font-medium mb-2">Egresos del mes</p>
+              <p className="text-3xl font-extrabold text-rose-400">
                 -${egresosMonth.toLocaleString()}
               </p>
             </div>
-            <div className="border-t border-white/20 pt-4 mt-2">
-              <p className="text-white/70 text-sm mb-1">Balance del mes</p>
-              <p className={`text-2xl font-bold ${
-                monthBalance >= 0 ? 'text-green-300' : 'text-red-300'
-              }`}>
-                {monthBalance >= 0 ? '+' : '-'}${Math.abs(monthBalance).toLocaleString()}
-              </p>
-            </div>
-            {profitMargin > 0 && (
-              <div className="mt-3 pt-3 border-t border-white/10">
-                <p className="text-white/70 text-xs mb-1">Margen de ganancia</p>
-                <p className="text-lg font-bold text-purple-300">
-                  ${profitMargin.toLocaleString()}
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -255,13 +319,13 @@ export const Home = () => {
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <button 
             onClick={() => navigate("/dashboard/agregar-movimiento")}
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:opacity-90 text-white px-6 py-3 rounded-full text-sm font-semibold transition shadow-lg hover:shadow-xl"
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105"
           >
             <Plus size={18} /> Agregar Movimiento
           </button>
           <button 
             onClick={() => navigate("/dashboard/historial")}
-            className="flex items-center justify-center gap-2 border border-white/30 hover:bg-white/10 px-6 py-3 rounded-full text-sm font-semibold transition"
+            className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl text-sm font-semibold transition-all"
           >
             <ScrollText size={18} /> Ver Historial Financiero
           </button>
@@ -269,13 +333,15 @@ export const Home = () => {
 
         {/* Gráfico */}
         <div className="mt-10">
-          <h3 className="text-xl font-bold mb-4">📊 Movimientos del Mes Actual</h3>
-          <div className="bg-black/20 rounded-xl p-6 border border-white/10">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-xl font-bold">Movimientos del Mes Actual</h3>
+          </div>
+          <div className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-xl">
             {chartData.length > 0 ? (
               <Chart data={chartData} />
             ) : (
               <div className="text-center py-16">
-                <div className="text-6xl mb-4 opacity-50">📈</div>
+                <div className="text-6xl mb-4 opacity-30">📈</div>
                 <p className="text-white/60 text-lg font-medium">Sin datos disponibles</p>
                 <p className="text-white/40 text-sm mt-2">Agrega movimientos para visualizar el gráfico</p>
               </div>

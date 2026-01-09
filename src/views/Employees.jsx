@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Users, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { getEmployees } from "@services/employeesService";
 import { axiosApi } from "@services/axiosclient";
 
@@ -8,6 +9,33 @@ export default function Employees() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Obtener el mes y año actual
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth(),
+      year: now.getFullYear()
+    };
+  };
+
+  // Filtrar movimientos del mes actual
+  const filterMovementsByCurrentMonth = (movements) => {
+    const { month, year } = getCurrentMonthYear();
+    
+    return movements.filter((movement) => {
+      // El movimiento puede tener date, createdAt, o fecha
+      const dateStr = movement.date || movement.createdAt || movement.fecha;
+      if (!dateStr) return false;
+      
+      const movementDate = new Date(dateStr);
+      
+      return (
+        movementDate.getMonth() === month &&
+        movementDate.getFullYear() === year
+      );
+    });
+  };
 
   useEffect(() => {
     const loadEmployees = async () => {
@@ -33,11 +61,15 @@ export default function Employees() {
                 `movements/user/${emp._id || emp.id}`,
                 { withCredentials: true }
               );
-              const movements = movementsRes?.data?.data || movementsRes?.data || [];
+              const allMovements = movementsRes?.data?.data || movementsRes?.data || [];
               
-              console.log(`📊 Movimientos de ${emp.name}:`, movements);
+              // Filtrar solo los movimientos del mes actual
+              const currentMonthMovements = filterMovementsByCurrentMonth(allMovements);
               
-              return { ...emp, movements };
+              console.log(`📊 Movimientos totales de ${emp.name}:`, allMovements.length);
+              console.log(`📅 Movimientos del mes actual de ${emp.name}:`, currentMonthMovements.length);
+              
+              return { ...emp, movements: currentMonthMovements };
             } catch (err) {
               console.error(`❌ Error obteniendo movimientos para ${emp.name}:`, err);
               return { 
@@ -48,7 +80,7 @@ export default function Employees() {
           })
         );
 
-        console.log("👥 Empleados con movimientos cargados:", employeesWithMovements);
+        console.log("👥 Empleados con movimientos del mes cargados:", employeesWithMovements);
         setEmployees(employeesWithMovements);
       } catch (err) {
         console.error("❌ Error cargando empleados:", err);
@@ -67,125 +99,138 @@ export default function Employees() {
     setTimeout(() => window.location.reload(), 400);
   };
 
-
-
-  // 🌀 Loader visual
+  // 🌀 Loader visual mejorado
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-white">
-        <div className="animate-spin h-10 w-10 border-4 border-t-transparent border-purple-400 rounded-full"></div>
-        <p className="mt-3 text-white/80">Cargando empleados...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a]">
+        <div className="text-center">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-pink-500 animate-spin" style={{ animationDuration: '1.5s' }}></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Users className="w-8 h-8 text-purple-400 animate-pulse" />
+            </div>
+          </div>
+          <p className="text-white text-xl font-semibold">Cargando empleados...</p>
+        </div>
       </div>
     );
   }
 
-  // ⚠️ Error visual
+  // ⚠️ Error visual mejorado
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-red-300">
-        <p className="text-lg font-medium text-center mb-3">{error}</p>
-        <button
-          onClick={handleRetry}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
-        >
-          Reintentar
-        </button>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] to-[#0f172a]">
+        <div className="text-center">
+          <p className="text-red-400 text-xl font-semibold mb-4">❌ {error}</p>
+          <button
+            onClick={handleRetry}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl transition-all text-white font-semibold shadow-lg hover:scale-105"
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }
-
 
   // 📊 Render normal
   return (
-    <div className="p-6 min-h-screen bg-[#0b0b2f] text-white">
-      <h1 className="text-2xl font-bold mb-6 text-white">
-        Rendimiento del Mes
-      </h1>
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#0f172a] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto">
+        {/* Header mejorado */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-1.5 h-12 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                Equipo
+              </h1>
+              <p className="text-white/60 mt-1">
+                Rendimiento del mes
+              </p>
+            </div>
+          </div>
+        </div>
 
-      {employees.length === 0 ? (
-        <p className="text-gray-400 text-center mt-10">
-          No hay empleados registrados.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {employees.map((emp, index) => {
-            // ✅ CALCULAR DESDE MOVEMENTS como en EmployeeDetail
-            const movements = emp.movements || [];
-            
-            const totalIngresos = movements
-              .filter((m) => m.type === "ingreso")
-              .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
+        {employees.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="inline-block bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl rounded-2xl px-12 py-16 border border-white/10">
+              <Users className="w-16 h-16 text-white/30 mx-auto mb-4" />
+              <p className="text-xl text-white/60 font-medium">
+                No hay empleados registrados
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {employees.map((emp, index) => {
+              const movements = emp.movements || [];
               
-            const totalEgresos = movements
-              .filter((m) => m.type === "egreso")
-              .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
-              
-            const balance = totalIngresos - totalEgresos;
+              const totalIngresos = movements
+                .filter((m) => m.type === "ingreso")
+                .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
+                
+              const totalEgresos = movements
+                .filter((m) => m.type === "egreso")
+                .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
 
-            console.log(`💰 RENDER - Datos finales de ${emp.name}:`, {
-              emp_id: emp._id || emp.id,
-              nombre: emp.name,
-              cant_movimientos: movements.length,
-              totalIngresos,
-              totalEgresos,
-              balance
-            });
+              return (
+                <div
+                  key={emp._id || emp.id || index}
+                  onClick={() => navigate(`/dashboard/employees/${emp._id || emp.id}`)}
+                  className="group cursor-pointer bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 border border-white/10 hover:border-purple-500/50 p-6"
+                >
+                  {/* Header de la tarjeta */}
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold text-white mb-1 group-hover:text-purple-300 transition-colors">
+                        {emp.name || "Sin nombre"} {emp.lastName || ""}
+                      </h2>
+                      <p className="text-sm text-slate-400 capitalize">
+                        {emp.role || "Sin rol"}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full font-medium border border-purple-500/30">
+                        {emp.businessCode}
+                      </span>
+                      <ArrowRight className="w-5 h-5 text-white/40 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </div>
 
-            return (
-              <div
-                key={emp._id || emp.id || index}
-                onClick={() =>
-                  navigate(`/dashboard/employees/${emp._id || emp.id}`)
-                }
-                className="cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-md hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 border border-slate-700 hover:border-purple-500 p-5"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">
-                      {emp.name || "Sin nombre"} {emp.lastName || ""}
-                    </h2>
-                    <p className="text-sm text-slate-400 capitalize">
-                      {emp.role || "Sin rol"}
+                  {/* Ingresos del mes - Card destacada */}
+                  <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-2 border-emerald-500/30 rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                      <p className="text-xs text-emerald-300 font-semibold">
+                        Ingresos del mes
+                      </p>
+                    </div>
+                    <p className="text-2xl font-extrabold text-emerald-400">
+                      ${totalIngresos.toLocaleString("es-CO")}
                     </p>
                   </div>
-                  <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-md font-medium border border-purple-500/30">
-                    {emp.businessCode}
-                  </span>
-                </div>
 
-                <div className="text-sm text-slate-300 space-y-1 mb-4">
-                  <p>
-                    <strong className="text-slate-400">Correo:</strong>{" "}
-                    {emp.email || "Sin correo registrado"}
-                  </p>
-                  <p>
-                    <strong className="text-slate-400">Total de ingresos:</strong>{" "}
-                    <span className="text-emerald-400 font-semibold">
-                      ${totalIngresos.toLocaleString("es-CO")}
-                    </span>
-                  </p>
-                  <p>
-                    <strong className="text-slate-400">Total de egresos:</strong>{" "}
-                    <span className="text-rose-400 font-semibold">
+                  {/* Egresos del mes */}
+                  <div className="flex items-center justify-between bg-white/5 rounded-xl p-4 border border-white/10">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="w-5 h-5 text-rose-400" />
+                      <p className="text-xs text-slate-400 font-medium">
+                        Egresos del mes
+                      </p>
+                    </div>
+                    <p className="text-lg font-bold text-rose-400">
                       ${totalEgresos.toLocaleString("es-CO")}
-                    </span>
-                  </p>
+                    </p>
+                  </div>
                 </div>
-
-                <div
-                  className={`rounded-lg p-3 text-center font-semibold border ${
-                    balance >= 0
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                      : "bg-rose-500/10 text-rose-400 border-rose-500/30"
-                  }`}
-                >
-                  Balance mensual: ${balance.toLocaleString("es-CO")}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

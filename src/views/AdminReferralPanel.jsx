@@ -5,57 +5,51 @@ import {
   updateReferralCodeService,
   getUsersByReferredCodeService,
 } from "@services/refferalService";
+import { Check, Copy, Loader2, Search, Users, X } from "lucide-react";
 
 export const AdminReferralPanel = () => {
-  const [rows, setRows] = useState([]); // { id, username, referralCode, referralsCount }
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // estados por-fila
   const [savingId, setSavingId] = useState(null);
-  const [draftCodes, setDraftCodes] = useState({}); // id -> string
-
-  // paginación
+  const [draftCodes, setDraftCodes] = useState({});
   const [page, setPage] = useState(1);
   const limit = 10;
   const [totalPages, setTotalPages] = useState(1);
 
-  // modal (ver referidos)
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalList, setModalList] = useState([]);
-  const [modalLoading, setModalLoading] = useState(false);
+  const [modal, setModal] = useState({
+    open: false,
+    loading: false,
+    title: "",
+    list: [],
+  });
 
-  const load = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
       const { data, totalPages: tp } = await getUsersWithReferralCodeService(page, limit);
 
-      // Si backend NO manda referralsCount, lo calculamos
       const enriched = await Promise.all(
         data.map(async (u) => {
           const id = u.id || u._id;
           const username = u.username;
           const code = u.referralCode || "";
-          let count = u.referralsCount;
-          if (count === undefined) {
-            if (!code) count = 0;
-            else {
-              const list = await getUsersByReferredCodeService(code, 1, 1000);
-              count = Array.isArray(list) ? list.length : 0;
-            }
-          }
+
+          let count =
+            typeof u.referralsCount === "number"
+              ? u.referralsCount
+              : code
+              ? (await getUsersByReferredCodeService(code, 1, 1000)).length || 0
+              : 0;
+
           return { id, username, referralCode: code, referralsCount: count };
         })
       );
 
       setRows(enriched);
-      // inicializa borradores con los códigos actuales
-      setDraftCodes(
-        Object.fromEntries(enriched.map((r) => [r.id, r.referralCode || ""]))
-      );
+      setDraftCodes(Object.fromEntries(enriched.map((r) => [r.id, r.referralCode ?? ""])));
       setTotalPages(tp || 1);
     } catch (e) {
-      console.error("❌ Error cargando usuarios:", e);
+      console.error("❌ Error cargando datos:", e);
       setRows([]);
     } finally {
       setLoading(false);
@@ -63,207 +57,314 @@ export const AdminReferralPanel = () => {
   };
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadData();
   }, [page]);
 
-  const handleDraftChange = (id, val) => {
-    setDraftCodes((d) => ({ ...d, [id]: val }));
+  const handleDraftChange = (id, value) => {
+    setDraftCodes((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSaveCode = async (row) => {
-    const userId = row.id;
-    const newCode = (draftCodes[userId] ?? "").trim();
-    const prevRows = rows;
-
-    // Detecta si cambió
+  const handleSave = async (row) => {
+    const id = row.id;
+    const newCode = (draftCodes[id] ?? "").trim();
     const changed = (row.referralCode || "") !== newCode;
-    if (!changed && savingId !== userId) return;
+    if (!changed) return;
 
-    setSavingId(userId);
+    setSavingId(id);
+    const prevRows = [...rows];
 
-    // Optimista: actualiza código en la tabla
-    setRows((r) => r.map((x) => (x.id === userId ? { ...x, referralCode: newCode } : x)));
+    // Optimistic UI
+    setRows((r) => r.map((x) => (x.id === id ? { ...x, referralCode: newCode } : x)));
 
     try {
-      await updateReferralCodeService(userId, newCode);
+      await updateReferralCodeService(id, newCode);
+      const list = newCode ? await getUsersByReferredCodeService(newCode, 1, 1000) : [];
+      const newCount = Array.isArray(list) ? list.length : 0;
 
-      // Recalcula #referidos para el nuevo código
-      let newCount = 0;
-      if (newCode) {
-        const list = await getUsersByReferredCodeService(newCode, 1, 1000);
-        newCount = Array.isArray(list) ? list.length : 0;
-      }
-      setRows((r) => r.map((x) => (x.id === userId ? { ...x, referralsCount: newCount } : x)));
-    } catch (e) {
-      console.error("❌ Error actualizando código:", e);
-      setRows(prevRows); // rollback
-      // también revierte el borrador al valor previo del row
-      setDraftCodes((d) => ({ ...d, [userId]: row.referralCode || "" }));
+      setRows((r) =>
+        r.map((x) => (x.id === id ? { ...x, referralsCount: newCount } : x))
+      );
+    } catch (error) {
+      console.error("❌ Error actualizando código:", error);
       alert("No se pudo actualizar el código.");
+      setRows(prevRows);
+      setDraftCodes((d) => ({ ...d, [id]: row.referralCode || "" }));
     } finally {
       setSavingId(null);
     }
   };
 
-  const handleViewReferrals = async (row) => {
-    setModalTitle(`Referidos de ${row.username}`);
-    setModalOpen(true);
-    setModalLoading(true);
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const openReferralsModal = async (row) => {
+    setModal({
+      open: true,
+      loading: true,
+      title: `Referidos de ${row.username}`,
+      list: [],
+    });
+
     try {
       const list = row.referralCode
         ? await getUsersByReferredCodeService(row.referralCode)
         : [];
-      setModalList(Array.isArray(list) ? list : []);
-    } catch (e) {
-      console.error("❌ Error trayendo referidos:", e);
-      setModalList([]);
-    } finally {
-      setModalLoading(false);
+      setModal((m) => ({ ...m, list: list || [], loading: false }));
+    } catch (err) {
+      console.error("❌ Error obteniendo referidos:", err);
+      setModal((m) => ({ ...m, loading: false }));
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10">
-      <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8">
-        <h2 className="text-3xl font-bold text-[#66B4FF] mb-6 flex items-center gap-2">
-          📊 Panel de Referidos (Admin)
-        </h2>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left border-separate border-spacing-y-2">
-            <thead>
-              <tr className="text-gray-600 dark:text-gray-300 text-sm uppercase bg-[#f1f5f9] dark:bg-gray-700">
-                <th className="px-4 py-2 rounded-l-lg">Usuario</th>
-                <th className="px-4 py-2">Código Asignado</th>
-                <th className="px-4 py-2 text-center"># Referidos</th>
-                <th className="px-4 py-2 rounded-r-lg text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="4" className="px-4 py-8 text-center text-gray-500">
-                    Cargando...
-                  </td>
-                </tr>
-              ) : rows.length ? (
-                rows.map((row) => {
-                  const draft = draftCodes[row.id] ?? "";
-                  const changed = (row.referralCode || "") !== (draft || "");
-                  const disableSave = savingId === row.id || !changed;
-
-                  return (
-                    <tr
-                      key={row.id}
-                      className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition rounded-xl shadow-sm"
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-800 dark:text-white">
-                        {row.username}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <input
-                            value={draft}
-                            onChange={(e) => handleDraftChange(row.id, e.target.value)}
-                            placeholder="No asignado"
-                            className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg px-3 py-1 w-44 focus:outline-none focus:ring-2 focus:ring-[#66B4FF]"
-                          />
-                          <button
-                            onClick={() => handleSaveCode(row)}
-                            disabled={disableSave}
-                            className="px-3 py-1.5 text-sm rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-                          >
-                            {savingId === row.id ? "Guardando..." : "Cambiar código"}
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Deja vacío para quitar el código.
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-3 text-center font-semibold text-[#66B4FF]">
-                        {row.referralsCount}
-                      </td>
-
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleViewReferrals(row)}
-                          className="bg-[#66B4FF] hover:bg-[#559adf] text-white text-sm font-semibold px-4 py-1.5 rounded-lg shadow transition"
-                          disabled={!row.referralCode}
-                          title={!row.referralCode ? "Este usuario no tiene código" : ""}
-                        >
-                          Ver referidos
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="4" className="px-4 py-8 text-center text-gray-500">
-                    Sin datos
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-3">
+            Panel de Referidos
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Administra códigos de referidos y visualiza estadísticas
+          </p>
         </div>
 
-        {/* Paginación */}
-        <div className="flex justify-center mt-4 gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1 || loading}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-md disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <span className="px-3 py-1">Página {page} de {totalPages}</span>
-          <button
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages || loading}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-md disabled:opacity-50"
-          >
-            Siguiente
-          </button>
+        {/* Card Principal */}
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-white/20 rounded-2xl">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Gestión de Referidos</h2>
+                <p className="text-blue-100">Total de usuarios con código: {rows.length}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla */}
+          <div className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="pb-4 pl-2">Usuario</th>
+                    <th className="pb-4">Código de Referido</th>
+                    <th className="pb-4 text-center">Referidos</th>
+                    <th className="pb-4 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-16">
+                        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto" />
+                        <p className="mt-3 text-gray-500">Cargando usuarios...</p>
+                      </td>
+                    </tr>
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-16 text-gray-500">
+                        No se encontraron usuarios con código de referido.
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((row) => {
+                      const draft = draftCodes[row.id] ?? "";
+                      const hasChanged = (row.referralCode || "") !== draft.trim();
+                      const isSaving = savingId === row.id;
+
+                      return (
+                        <tr
+                          key={row.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200 group"
+                        >
+                          {/* Usuario */}
+                          <td className="py-5 pl-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full flex items-center justify-center text-white font-bold">
+                                {row.username[0].toUpperCase()}
+                              </div>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {row.username}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Código */}
+                          <td className="py-5">
+                            <div className="flex items-center gap-3 max-w-md">
+                              <div className="relative flex-1">
+                                <input
+                                  type="text"
+                                  value={draft}
+                                  onChange={(e) => handleDraftChange(row.id, e.target.value)}
+                                  placeholder="Ej: VIP2025"
+                                  className={`w-full px-4 py-3 rounded-xl border ${
+                                    hasChanged
+                                      ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
+                                      : "border-gray-300 dark:border-gray-600"
+                                  } focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all pr-12`}
+                                />
+                                {hasChanged && (
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => handleSave(row)}
+                                disabled={!hasChanged || isSaving}
+                                className={`px-5 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                                  hasChanged
+                                    ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                                    : "bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+                                } disabled:opacity-60`}
+                              >
+                                {isSaving ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Guardando
+                                  </>
+                                ) : hasChanged ? (
+                                  <>
+                                    <Check className="w-4 h-4" />
+                                    Guardar
+                                  </>
+                                ) : (
+                                  "Sin cambios"
+                                )}
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2 ml-1">
+                              Deja vacío para eliminar • Se puede copiar con el botón →
+                            </p>
+                          </td>
+
+                          {/* Cantidad de referidos */}
+                          <td className="py-5 text-center">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-full">
+                              <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              <span className="font-bold text-xl text-blue-600 dark:text-blue-400">
+                                {row.referralsCount}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Acciones */}
+                          <td className="py-5 text-center">
+                            <button
+                              onClick={() => openReferralsModal(row)}
+                              disabled={!row.referralCode}
+                              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2 mx-auto"
+                            >
+                              <Search className="w-4 h-4" />
+                              Ver Referidos
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Paginación */}
+            <div className="flex items-center justify-between mt-8">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Mostrando página <span className="font-bold">{page}</span> de{" "}
+                <span className="font-bold">{totalPages}</span>
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Modal referidos */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h3 className="text-xl font-bold">{modalTitle}</h3>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="text-gray-500 hover:text-gray-800 dark:hover:text-white"
-              >
-                ✕
-              </button>
+      {/* Modal Premium */}
+      {modal.open && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-bold flex items-center gap-3">
+                  <Users className="w-8 h-8" />
+                  {modal.title}
+                </h3>
+                <button
+                  onClick={() => setModal({ ...modal, open: false })}
+                  className="p-2 hover:bg-white/20 rounded-xl transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
-            <div className="p-5 max-h-[60vh] overflow-y-auto">
-              {modalLoading ? (
-                <p className="text-gray-500">Cargando...</p>
-              ) : modalList.length ? (
-                <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {modalList.map((r, i) => (
-                    <li key={r.id || r._id || i} className="py-2 flex justify-between">
-                      <span>{r.username || r.name || "—"}</span>
-                      <span className="text-sm text-gray-500">{r.email || "—"}</span>
-                    </li>
+
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {modal.loading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto" />
+                </div>
+              ) : modal.list.length > 0 ? (
+                <div className="grid gap-4">
+                  {modal.list.map((user, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                          {user.username[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {user.username}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(user.username)}
+                        className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+                        title="Copiar nombre de usuario"
+                      >
+                        <Copy className="w-5 h-5 text-gray-500" />
+                      </button>
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
-                <p className="text-gray-500">Este código aún no tiene referidos.</p>
+                <p className="text-center text-gray-500 py-12">
+                  Este usuario aún no tiene referidos.
+                </p>
               )}
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 text-right">
+
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 text-right">
               <button
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-md"
+                onClick={() => setModal({ ...modal, open: false })}
+                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition transform hover:scale-105"
               >
                 Cerrar
               </button>

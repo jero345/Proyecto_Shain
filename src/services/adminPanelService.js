@@ -6,24 +6,36 @@ import { axiosApi } from '@services/axiosclient';
  * Devuelve { data, totalPages, page }
  */
 export const getAllUsersService = async (page = 1, limit = 10) => {
-  const res = await axiosApi.get('/users', {
-    params: { page, limit },
-    withCredentials: true,
-  });
+  console.log('[AdminService] Obteniendo usuarios, página:', page);
+  
+  try {
+    const res = await axiosApi.get('/users', {
+      params: { page, limit },
+    });
 
-  const payload = res.data || {};
-  return {
-    data:
-      payload.data?.users ??
-      payload.users ??
-      payload.data ??
-      [],
-    totalPages:
-      payload.totalPages ??
-      payload.pagination?.totalPages ??
-      1,
-    page: payload.page ?? payload.pagination?.page ?? page,
-  };
+    console.log('[AdminService] Respuesta usuarios:', res.data);
+
+    const payload = res.data || {};
+    return {
+      data:
+        payload.data?.users ??
+        payload.users ??
+        payload.data ??
+        [],
+      totalPages:
+        payload.totalPages ??
+        payload.pagination?.totalPages ??
+        1,
+      page: payload.page ?? payload.pagination?.page ?? page,
+    };
+  } catch (error) {
+    console.error('[AdminService] Error obteniendo usuarios:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
 };
 
 /**
@@ -31,13 +43,24 @@ export const getAllUsersService = async (page = 1, limit = 10) => {
  * Cambiar estado (active | inactive)
  */
 export const updateUserStatusService = async (id, status) => {
-  const res = await axiosApi.patch(
-    `/users/${id}/status`,
-    { status },
-    { withCredentials: true }
-  );
-  // mayoría de backends retornan { data: { ...user } }
-  return res.data?.data ?? res.data;
+  console.log('[AdminService] Actualizando estado:', id, '->', status);
+  
+  try {
+    const res = await axiosApi.patch(
+      `/users/${id}/status`,
+      { status }
+    );
+    
+    console.log('[AdminService] ✅ Estado actualizado:', res.data);
+    return res.data?.data ?? res.data;
+  } catch (error) {
+    console.error('[AdminService] ❌ Error actualizando estado:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
 };
 
 /**
@@ -45,20 +68,33 @@ export const updateUserStatusService = async (id, status) => {
  * Actualiza datos generales del usuario.
  */
 export const updateUserService = async (id, payload) => {
-  // limpia keys undefined/null/'' (opcional, quita la línea de '' si quieres permitir vacío)
+  console.log('[AdminService] Actualizando usuario:', id, payload);
+  
+  // Limpiar keys undefined/null
   const sanitizedPayload = Object.fromEntries(
     Object.entries(payload).filter(
-      ([, value]) =>
-        value !== undefined && value !== null
+      ([, value]) => value !== undefined && value !== null
     )
   );
 
-  const res = await axiosApi.patch(
-    `/users/${id}`,
-    sanitizedPayload,
-    { withCredentials: true }
-  );
-  return res.data?.data ?? res.data;
+  console.log('[AdminService] Payload sanitizado:', sanitizedPayload);
+
+  try {
+    const res = await axiosApi.patch(
+      `/users/${id}`,
+      sanitizedPayload
+    );
+    
+    console.log('[AdminService] ✅ Usuario actualizado:', res.data);
+    return res.data?.data ?? res.data;
+  } catch (error) {
+    console.error('[AdminService] ❌ Error actualizando usuario:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
 };
 
 /**
@@ -66,6 +102,17 @@ export const updateUserService = async (id, payload) => {
  * Traer un usuario por id (útil para refrescar luego de un update)
  */
 export const getUserByIdService = async (id) => {
-  const res = await axiosApi.get(`/users/${id}`, { withCredentials: true });
-  return res.data?.data ?? res.data;
+  console.log('[AdminService] Obteniendo usuario:', id);
+  
+  try {
+    const res = await axiosApi.get(`/users/${id}`);
+    console.log('[AdminService] Usuario obtenido:', res.data);
+    return res.data?.data ?? res.data;
+  } catch (error) {
+    console.error('[AdminService] Error obteniendo usuario:', {
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    throw error;
+  }
 };

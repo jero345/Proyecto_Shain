@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { registerRequest } from '@services/authService';
 import logo from '@assets/logo.png';
 import bgImage from '@assets/fondo.png';
+import { Info } from 'lucide-react';
 
 export const Signup = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export const Signup = () => {
     confirmPassword: '',
     acceptedTerms: false,
     referredByCode: '',
-    businessCode: '', // Inicializado como cadena vacía
+    businessCode: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -68,16 +69,25 @@ export const Signup = () => {
       e.referredByCode = 'Código inválido (4–16 caracteres alfanuméricos).';
     }
 
-    // Nota: ya no se obliga a businessCode; se mantiene sin validación cliente
+    // Validación: código de negocio obligatorio para prestadores de servicios
+    if (values.role === 'prestador_servicios') {
+      if (!values.businessCode || !values.businessCode.trim()) {
+        e.businessCode = 'El código del negocio es obligatorio para profesionales.';
+      }
+    }
+
     return e;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    // Si se cambia el rol y NO es prestador_servicios, limpiar businessCode
     if (name === 'role') {
       const newRole = value;
-      setForm(prev => ({ ...prev, role: newRole, businessCode: newRole !== 'prestador_servicios' ? '' : prev.businessCode }));
+      setForm(prev => ({ 
+        ...prev, 
+        role: newRole, 
+        businessCode: newRole !== 'prestador_servicios' ? '' : prev.businessCode 
+      }));
       setErrors(prev => ({ ...prev, [name]: undefined, businessCode: undefined }));
       setServerError('');
       return;
@@ -123,7 +133,7 @@ export const Signup = () => {
         else if (lower.includes('usuario') || lower.includes('user')) newFieldErrors.username = message;
         else if (lower.includes('tel') || lower.includes('phone') || lower.includes('telefono')) newFieldErrors.phone = message;
         else if (lower.includes('contraseña') || lower.includes('password')) newFieldErrors.password = message;
-        else if (lower.includes('negocio')) newFieldErrors.businessCode = message;
+        else if (lower.includes('negocio') || lower.includes('business')) newFieldErrors.businessCode = message;
         else if (lower.includes('refer')) newFieldErrors.referredByCode = message;
         else setServerError(message);
       }
@@ -143,27 +153,23 @@ export const Signup = () => {
     e.preventDefault();
     setServerError('');
 
-    // Normalizar valores del formulario: reemplaza undefined/null por '' y convierte a string cuando corresponda
     const cleanedForm = { ...form };
     Object.keys(cleanedForm).forEach((key) => {
       if (cleanedForm[key] === undefined || cleanedForm[key] === null) {
         cleanedForm[key] = '';
       } else if (typeof cleanedForm[key] === 'boolean') {
-        // mantener booleanos (acceptedTerms) como booleanos
+        // mantener booleanos
       } else {
-        // forzar a string para evitar "received undefined expected string"
         cleanedForm[key] = String(cleanedForm[key]);
       }
     });
 
-    // Validación de campos
     const fieldErrors = validate(cleanedForm);
     if (Object.keys(fieldErrors).length) {
       setErrors(fieldErrors);
       return;
     }
 
-    // Construir payload normalizado: asegurar que businessCode siempre exista y acceptedTerms sea booleano
     const payload = {
       name: cleanedForm.name,
       lastName: cleanedForm.lastName,
@@ -175,7 +181,7 @@ export const Signup = () => {
       confirmPassword: cleanedForm.confirmPassword,
       acceptedTerms: Boolean(cleanedForm.acceptedTerms),
       referredByCode: cleanedForm.referredByCode || '',
-      businessCode: cleanedForm.businessCode || '', // siempre incluido
+      businessCode: cleanedForm.businessCode || '',
     };
 
     try {
@@ -256,25 +262,40 @@ export const Signup = () => {
               className={`w-full bg-purple-600 text-white border-2 border-purple-700 rounded-md py-2 px-4 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-500 mt-2 transition ease-in-out duration-300 ${hasError('role') ? 'ring-2 ring-red-400 focus:ring-red-400' : ''}`}
             >
               <option value="">Seleccione un rol</option>
-              <option value="prestador_servicios">Profesional</option>
+              <option value="prestador_servicios">Empleado</option>
               <option value="propietario_negocio">Propietario de negocio</option>
             </select>
             {hasError('role') && <p className="text-red-300 text-xs -mt-2">{errors.role}</p>}
 
             {/* Código del negocio: solo visible si se elige "Prestador de servicios" */}
             {form.role === 'prestador_servicios' && (
-              <div>
-                <input
-                  name="businessCode"
-                  placeholder="Código del negocio"
-                  value={form.businessCode}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  className={`${inputBase} ${hasError('businessCode') ? inputWithError : ''}`}
-                />
-                {hasError('businessCode') && (
-                  <p className="text-red-300 text-xs -mt-2">{errors.businessCode}</p>
-                )}
+              <div className="space-y-2">
+                {/* Mensaje informativo */}
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/15 border border-blue-400/30">
+                  <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-200">
+                    <p className="font-medium mb-1">¿Qué es el código del negocio?</p>
+                    <p className="text-blue-200/80">
+                      Es un código único que te proporciona el propietario del negocio donde trabajas. 
+                      Este código es <span className="font-semibold text-blue-100">obligatorio</span> para 
+                      vincular tu cuenta como profesional. Si no lo tienes, solicítalo a tu empleador.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <input
+                    name="businessCode"
+                    placeholder="Código del negocio (obligatorio)"
+                    value={form.businessCode}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`${inputBase} ${hasError('businessCode') ? inputWithError : ''}`}
+                  />
+                  {hasError('businessCode') && (
+                    <p className="text-red-300 text-xs mt-1">{errors.businessCode}</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -320,7 +341,7 @@ export const Signup = () => {
                 className={`${inputBase} ${hasError('referredByCode') ? inputWithError : ''}`}
               />
               {hasError('referredByCode') ? (
-                <p className="text-red-300 text-xs -mt-2">{errors.referredByCode}</p>
+                <p className="text-red-300 text-xs mt-1">{errors.referredByCode}</p>
               ) : (
                 <p className="text-white/60 text-xs mt-1">
                   Si alguien te invitó, ingresa su código para asignar el referido.
