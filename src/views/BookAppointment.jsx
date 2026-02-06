@@ -15,6 +15,15 @@ export const BookAppointment = () => {
   const [loading, setLoading] = useState(false);
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [expandedHour, setExpandedHour] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  // Auto-cerrar toast
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
 
   const formatDateToYYYYMMDD = (dateObj) => {
     const year = dateObj.getFullYear();
@@ -89,18 +98,9 @@ export const BookAppointment = () => {
       setExpandedHour(null);
       
       const formattedDate = formatDateToYYYYMMDD(selectedDate);
-      
-      console.log('🔄 Cargando horarios para fecha:', formattedDate);
-      
       const slots = await getAvailableTimeslots(formattedDate);
-      
-      console.log('📦 Slots recibidos del servicio:', slots);
-      
-      // Los slots ya vienen normalizados del servicio
       setAvailableTimes(slots);
-      
-    } catch (error) {
-      console.error('❌ Error al cargar horarios:', error);
+    } catch {
       setAvailableTimes([]);
     } finally {
       setLoadingTimes(false);
@@ -113,7 +113,6 @@ export const BookAppointment = () => {
   }, [date, fetchTimes]);
 
   const handleDateChange = (newDate) => {
-    console.log('📅 Fecha cambiada a:', newDate);
     setDate(newDate);
   };
 
@@ -138,19 +137,19 @@ export const BookAppointment = () => {
     e.preventDefault();
 
     if (!selectedTimeId) {
-      alert('⚠️ Selecciona un horario.');
+      setToast({ type: 'error', message: 'Selecciona un horario.' });
       return;
     }
 
     // Validar límite de caracteres
     if (description.length > DESCRIPTION_MAX_LENGTH) {
-      alert(`⚠️ La descripción no puede superar los ${DESCRIPTION_MAX_LENGTH.toLocaleString()} caracteres.`);
+      setToast({ type: 'error', message: `La descripción no puede superar los ${DESCRIPTION_MAX_LENGTH.toLocaleString()} caracteres.` });
       return;
     }
 
     const selectedSlot = availableTimes.find(s => s._id === selectedTimeId);
     if (selectedSlot && !selectedSlot.available) {
-      alert('⚠️ Este horario ya fue reservado. Por favor selecciona otro.');
+      setToast({ type: 'error', message: 'Este horario ya fue reservado. Por favor selecciona otro.' });
       setSelectedTimeId('');
       return;
     }
@@ -177,28 +176,26 @@ export const BookAppointment = () => {
         )
       );
       
-      alert('✅ Cita reservada correctamente');
+      setToast({ type: 'success', message: 'Cita reservada correctamente' });
       setClientName('');
       setDescription('');
       setSelectedTimeId('');
     } catch (err) {
-      console.error('❌ Error al registrar cita:', err);
-      
       const errorMsg = err.message || '';
-      if (errorMsg.toLowerCase().includes('reservad') || 
+      if (errorMsg.toLowerCase().includes('reservad') ||
           errorMsg.toLowerCase().includes('ocupad') ||
           errorMsg.toLowerCase().includes('no disponible')) {
-        setAvailableTimes(prevTimes => 
-          prevTimes.map(slot => 
-            slot._id === selectedTimeId 
-              ? { ...slot, available: false } 
+        setAvailableTimes(prevTimes =>
+          prevTimes.map(slot =>
+            slot._id === selectedTimeId
+              ? { ...slot, available: false }
               : slot
           )
         );
         setSelectedTimeId('');
-        alert('⚠️ Este horario ya fue reservado por otra persona. Por favor selecciona otro.');
+        setToast({ type: 'error', message: 'Este horario ya fue reservado por otra persona. Selecciona otro.' });
       } else {
-        alert(err.message || 'Error al registrar la cita. Intenta más tarde.');
+        setToast({ type: 'error', message: err.message || 'Error al registrar la cita. Intenta más tarde.' });
       }
     } finally {
       setLoading(false);
@@ -207,12 +204,6 @@ export const BookAppointment = () => {
 
   const availableCount = availableTimes.filter(s => s.available).length;
   const reservedCount = availableTimes.filter(s => !s.available).length;
-
-  // Calcular caracteres restantes y porcentaje
-  const descriptionLength = description.length;
-  const descriptionPercentage = (descriptionLength / DESCRIPTION_MAX_LENGTH) * 100;
-  const isNearLimit = descriptionPercentage >= 80;
-  const isAtLimit = descriptionLength >= DESCRIPTION_MAX_LENGTH;
 
   const TimeSlotButton = ({ slot, isSubSlot = false }) => {
     if (!slot) return null;
@@ -374,7 +365,7 @@ export const BookAppointment = () => {
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-purple-400" />
-                <h2 className="text-lg sm:text-xl font-bold">Horarios Disponibles</h2>
+                <h2 className="text-lg sm:text-xl font-bold">Horario</h2>
               </div>
               {!loadingTimes && availableTimes.length > 0 && (
                 <div className="flex items-center gap-3 text-xs">
@@ -507,54 +498,19 @@ export const BookAppointment = () => {
                 />
               </div>
 
-              {/* Descripción con contador */}
+              {/* Descripción */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center gap-2 text-sm text-white/90">
-                    <FileText className="w-4 h-4 text-purple-400" />
-                    Descripción
-                  </label>
-                  <span className={`text-xs font-medium transition-colors ${
-                    isAtLimit 
-                      ? 'text-red-400' 
-                      : isNearLimit 
-                        ? 'text-yellow-400' 
-                        : 'text-white/50'
-                  }`}>
-                    {descriptionLength.toLocaleString()}/{DESCRIPTION_MAX_LENGTH.toLocaleString()}
-                  </span>
-                </div>
+                <label className="flex items-center gap-2 text-sm text-white/90 mb-2">
+                  <FileText className="w-4 h-4 text-purple-400" />
+                  Descripción
+                </label>
                 <textarea
                   value={description}
                   onChange={handleDescriptionChange}
                   rows={4}
                   placeholder=""
-                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border text-white placeholder:text-white/40 focus:outline-none focus:ring-2 transition-all resize-none ${
-                    isAtLimit
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50'
-                      : 'border-white/10 focus:ring-purple-500/50 focus:border-purple-500/50'
-                  }`}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all resize-none"
                 ></textarea>
-                {/* Mensaje cuando se alcanza el límite */}
-                {isAtLimit && (
-                  <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
-                    <span>⚠️</span>
-                    Has alcanzado el límite de {DESCRIPTION_MAX_LENGTH.toLocaleString()} caracteres
-                  </p>
-                )}
-                {/* Barra de progreso visual */}
-                <div className="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-300 ${
-                      isAtLimit 
-                        ? 'bg-red-500' 
-                        : isNearLimit 
-                          ? 'bg-yellow-500' 
-                          : 'bg-purple-500'
-                    }`}
-                    style={{ width: `${Math.min(descriptionPercentage, 100)}%` }}
-                  />
-                </div>
               </div>
 
               <button
@@ -584,6 +540,23 @@ export const BookAppointment = () => {
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-xl text-white shadow-2xl font-medium text-sm border
+            ${toast.type === 'success'
+              ? 'bg-green-500/20 border-green-500/30 text-green-300'
+              : 'bg-red-500/20 border-red-500/30 text-red-300'}
+            animate-[fadeIn_150ms_ease-out]`}
+        >
+          {toast.type === 'success' ? '✅' : '⚠️'} {toast.message}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };

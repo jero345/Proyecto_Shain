@@ -12,7 +12,7 @@ export const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuth() || {};
   const userRole = normalizeRole(user?.role || "");
-  
+
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,11 +20,7 @@ export const Home = () => {
 
   const isOwner = userRole === ROLES.OWNER;
 
-  console.log('🏠 Home - Rol del usuario:', userRole, 'isOwner:', isOwner);
-
   useEffect(() => {
-    console.log('🏠 Iniciando carga del Home...');
-    console.log('👤 Usuario:', user);
     fetchData();
   }, [user]);
 
@@ -33,94 +29,89 @@ export const Home = () => {
       setLoading(true);
       setError("");
 
+      // Helper para validar ObjectId de MongoDB
+      const isValidObjectId = (id) => {
+        if (!id || typeof id !== 'string') return false;
+        return /^[a-fA-F0-9]{24}$/.test(id);
+      };
+
       // Obtener IDs desde múltiples fuentes
       let userId = localStorage.getItem('user_id');
       let businessId = localStorage.getItem('business_id');
 
+      // Limpiar strings inválidos
+      if (!userId || userId === "undefined" || userId === "null" || userId === "[object Object]") userId = null;
+      if (!businessId || businessId === "undefined" || businessId === "null" || businessId === "[object Object]") businessId = null;
+
+      // Validar formato de ObjectId
+      if (userId && !isValidObjectId(userId)) {
+        localStorage.removeItem('user_id');
+        userId = null;
+      }
+      if (businessId && !isValidObjectId(businessId)) {
+        localStorage.removeItem('business_id');
+        businessId = null;
+      }
+
       // Si no están en localStorage, intentar desde user
       if (!userId) {
-        userId = user?.id || user?._id || user?.userId;
-        if (userId) {
+        const candidateUserId = user?.id || user?._id || user?.userId;
+        if (candidateUserId && isValidObjectId(candidateUserId)) {
+          userId = candidateUserId;
           localStorage.setItem('user_id', userId);
         }
       }
 
       if (!businessId) {
         const businessValue = user?.business || user?.businessId;
-        if (typeof businessValue === 'string') {
+        if (typeof businessValue === 'string' && isValidObjectId(businessValue)) {
           businessId = businessValue;
           localStorage.setItem('business_id', businessId);
         } else if (businessValue && typeof businessValue === 'object') {
-          businessId = businessValue.id || businessValue._id;
-          if (businessId) {
+          const candidateBizId = businessValue.id || businessValue._id;
+          if (candidateBizId && isValidObjectId(candidateBizId)) {
+            businessId = candidateBizId;
             localStorage.setItem('business_id', businessId);
           }
         }
       }
 
-      console.log('👤 User ID (final):', userId);
-      console.log('🏢 Business ID (final):', businessId);
-      console.log('🎭 Rol:', userRole, '| isOwner:', isOwner);
-
-      // Validación según rol
-      if (isOwner && !businessId) {
-        throw new Error('No se encontró el ID de negocio. Por favor, cierra sesión y vuelve a iniciar.');
-      }
-      
-      if (!isOwner && !userId) {
-        throw new Error('No se encontró tu ID de usuario. Por favor, cierra sesión y vuelve a iniciar.');
-      }
-
-      // 1. Obtener el resumen del backend
-      console.log('📊 Obteniendo resumen diario del backend...');
-      
-      try {
-        const summaryData = await getDailySummaryService();
-        console.log('✅ Resumen recibido:', summaryData);
-        setSummary(summaryData);
-      } catch (summaryError) {
-        console.error('❌ Error obteniendo resumen:', summaryError);
-        // Si es 401, el interceptor lo manejará
-        if (summaryError?.response?.status !== 401) {
-          console.warn('⚠️ Continuando sin resumen...');
+      // Obtener el resumen del backend (solo si hay ID valido)
+      if (userId || businessId) {
+        try {
+          const summaryData = await getDailySummaryService();
+          if (summaryData) {
+            setSummary(summaryData);
+          }
+        } catch {
+          // Continuar sin resumen
         }
       }
 
-      // 2. Obtener movimientos para el gráfico según ROL
-      console.log('📈 Obteniendo movimientos para gráfico...');
-      
+      // Obtener movimientos para el gráfico según ROL
+
       let movements = [];
-      
+
       try {
         if (!isOwner && userId) {
-          // PRESTADOR DE SERVICIO: Usar userId
-          console.log('📍 Obteniendo movimientos como PRESTADOR DE SERVICIO');
           movements = await getMovementsForServiceProvider(userId, '', 'month');
         } else if (isOwner && businessId) {
-          // PROPIETARIO: Usar businessId
-          console.log('📍 Obteniendo movimientos como PROPIETARIO DE NEGOCIO');
           movements = await getMovementsForBusinessOwner(businessId, '', 'month');
         }
 
-        console.log('✅ Movimientos recibidos:', movements?.length || 0);
-
         if (movements?.length) {
           const chart = buildChartFromMovements(movements);
-          console.log('📊 Datos procesados para gráfico:', chart);
           setChartData(chart);
         } else {
           setChartData([]);
         }
       } catch (movementsError) {
-        console.error('❌ Error obteniendo movimientos:', movementsError);
-        // Si es 401, el interceptor lo manejará
         if (movementsError?.response?.status !== 401) {
           setChartData([]);
         }
       }
 
     } catch (err) {
-      console.error("❌ Error en fetchData:", err);
       setError(err.message || "No se pudo cargar la información del dashboard");
     } finally {
       setLoading(false);
@@ -131,10 +122,10 @@ export const Home = () => {
     if (!movements || !Array.isArray(movements)) return [];
 
     const grouped = {};
-    
+
     movements.forEach((m) => {
       if (!m.date || !m.type || m.value == null) return;
-      
+
       // Formato de fecha sin desfase
       const [year, month, day] = m.date.split('-').map(Number);
       const fecha = new Date(year, month - 1, day);
@@ -143,14 +134,14 @@ export const Home = () => {
         month: '2-digit',
         year: 'numeric'
       });
-      
+
       if (!grouped[dateKey]) {
         grouped[dateKey] = { date: dateKey, Ingresos: 0, Egresos: 0 };
       }
-      
+
       const val = Number(m.value) || 0;
       const type = (m.type || '').toLowerCase();
-      
+
       if (type === "ingreso") {
         grouped[dateKey].Ingresos += val;
       } else if (type === "egreso") {
@@ -189,12 +180,12 @@ export const Home = () => {
               <HomeIcon className="w-10 h-10 text-purple-400 animate-pulse" />
             </div>
           </div>
-          
+
           <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
             Cargando Dashboard
           </h2>
           <p className="text-white/60 text-sm">Preparando tu información...</p>
-          
+
           <div className="flex justify-center gap-2 mt-4">
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -237,7 +228,7 @@ export const Home = () => {
   // Extraer datos del summary
   const dayStatistics = summary?.dayStatistics || {};
   const totalTransactionsDay = dayStatistics?.totalTransactionsDay || {};
-  
+
   const incomesToday = Number(totalTransactionsDay?.incomes || 0);
   const expensesToday = Number(totalTransactionsDay?.expenses || 0);
   const totalDelDia = incomesToday - expensesToday;
@@ -247,7 +238,7 @@ export const Home = () => {
 
   const monthStatistics = summary?.monthStatistics || {};
   const totalTransactionsMonth = monthStatistics?.totalTransactionsMonth || {};
-  
+
   const ingresosMonth = Number(totalTransactionsMonth?.incomes || 0);
   const egresosMonth = Number(totalTransactionsMonth?.expenses || 0);
   const monthBalance = Number(monthStatistics?.monthBalance || 0);
@@ -317,13 +308,13 @@ export const Home = () => {
 
         {/* Botones de acciones */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <button 
+          <button
             onClick={() => navigate("/dashboard/agregar-movimiento")}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105"
           >
             <Plus size={18} /> Agregar Movimiento
           </button>
-          <button 
+          <button
             onClick={() => navigate("/dashboard/historial")}
             className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl text-sm font-semibold transition-all"
           >

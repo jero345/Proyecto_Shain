@@ -12,11 +12,8 @@ export const getAvailableTimeslots = async (date) => {
       params: { date },
       withCredentials: true,
     });
-    
-    const timeslots = pick(response) ?? [];
 
-    console.log('📅 Fecha:', date);
-    console.log('🕐 Timeslots recibidos:', timeslots);
+    const timeslots = pick(response) ?? [];
 
     // Usar directamente el valor 'available' que viene del backend
     return timeslots.map((item) => ({
@@ -25,8 +22,7 @@ export const getAvailableTimeslots = async (date) => {
       hour: item.hour,
       available: item.available === true, // Comparación estricta
     }));
-  } catch (error) {
-    console.error('❌ Error al obtener horarios:', error);
+  } catch {
     return [];
   }
 };
@@ -41,7 +37,6 @@ export const bookAppointmentService = async (appointment) => {
     });
     return data;
   } catch (error) {
-    console.error('❌ Error en la creación de la cita:', error);
     throw error?.response?.data || error;
   }
 };
@@ -50,42 +45,22 @@ export const bookAppointmentService = async (appointment) => {
  * Traer todas las citas con el timeSlot poblado para obtener la HORA
  */
 export const getAllAppointmentsService = async () => {
-  console.log('🚀 FUNCIÓN getAllAppointmentsService INICIADA');
-  
   try {
-    console.log('🔍 Solicitando citas al backend...');
-    
     const res = await axiosApi.get('/bookings', {
       withCredentials: true,
     });
 
-    console.log('📦 Respuesta completa del backend:', res);
-    console.log('📊 Data cruda:', res.data);
-
     const list = pick(res) ?? [];
-    
-    console.log('📋 Lista extraída (después de pick):', list);
-    console.log('📏 Cantidad de citas:', list.length);
 
     // Normalizamos para la UI según la estructura real del backend
-    const normalized = list.map((a, index) => {
-      console.log(`\n--- 🔎 Procesando cita ${index + 1} ---`);
-      console.log('Raw appointment:', a);
-      console.log('  · _id:', a._id);
-      console.log('  · id:', a.id);
-      console.log('  · date:', a.date);
-      console.log('  · customerName:', a.customerName);
-      console.log('  · description:', a.description);
-      console.log('  · timeSlot:', a.timeSlot);
-      
+    const normalized = list.map((a) => {
       // Extraer hora del timeSlot (que es un objeto)
       let hour = null;
       if (a.timeSlot && typeof a.timeSlot === 'object' && a.timeSlot.hour) {
         hour = a.timeSlot.hour;
-        console.log('  · hora extraída de timeSlot.hour:', hour);
       }
 
-      const normalized = {
+      return {
         _id: a._id,
         id: a.id || a._id,
         date: a.date,
@@ -94,18 +69,10 @@ export const getAllAppointmentsService = async () => {
         timeSlotId: a.timeSlot?._id || a.timeSlot?.id || null,
         hour: hour,
       };
-
-      console.log('✅ Normalizada:', normalized);
-      return normalized;
     });
 
-    console.log('\n📦 RESULTADO FINAL (todas las citas normalizadas):', normalized);
-    console.log('📊 Total de citas procesadas:', normalized.length);
-
     return normalized;
-  } catch (error) {
-    console.error('❌ Error al obtener las citas:', error);
-    console.error('❌ Error completo:', error.response || error);
+  } catch {
     return [];
   }
 };
@@ -121,7 +88,6 @@ export const deleteAppointmentService = async (id) => {
     });
     return data;
   } catch (error) {
-    console.error('❌ Error al eliminar la cita:', error);
     throw error?.response?.data || error;
   }
 };
@@ -148,8 +114,7 @@ export const getAppointmentsWithFilterService = async (filter) => {
         : a.timeSlot?._id || a.timeSlot?.id || null,
       hour: a.hour || a.time || a.timeSlot?.hour || a.timeslot?.hour || null,
     }));
-  } catch (error) {
-    console.error('❌ Error al obtener las citas con filtro:', error);
+  } catch {
     return [];
   }
 };

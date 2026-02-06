@@ -2,7 +2,7 @@
 import { Plus, User as UserIcon, LogOut, Loader2 } from "lucide-react";
 import appLogo from "@assets/logo.png";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useAuth } from "@context/AuthContext";
 
 export const Navbar = ({ setOpen }) => {
@@ -10,6 +10,7 @@ export const Navbar = ({ setOpen }) => {
   const { user, logout } = useAuth();
   const [imgError, setImgError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [cachedBusiness, setCachedBusiness] = useState(null);
 
   const name = useMemo(() => {
     if (!user) return "Usuario";
@@ -22,46 +23,78 @@ export const Navbar = ({ setOpen }) => {
     return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "U";
   }, [name]);
 
-  // 1) logo desde contexto, 2) logo cacheado de business en localStorage, 3) null
-  const cachedBusiness = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("business")) || null;
-    } catch {
-      return null;
-    }
+  // Cargar business y businessImage desde localStorage al inicio y cuando cambie
+  const [businessImage, setBusinessImage] = useState(null);
+
+  useEffect(() => {
+    const loadBusiness = () => {
+      try {
+        const stored = localStorage.getItem("business");
+        if (stored) {
+          setCachedBusiness(JSON.parse(stored));
+        }
+        // Cargar businessImage directamente (para empleados)
+        const storedImage = localStorage.getItem("business_image");
+        if (storedImage) {
+          setBusinessImage(storedImage);
+        }
+      } catch {
+        setCachedBusiness(null);
+      }
+    };
+
+    loadBusiness();
+
+    const handleStorage = (e) => {
+      if (e.key === "business" || e.key === "business_image") {
+        loadBusiness();
+      }
+    };
+
+    const handleBusinessUpdate = () => {
+      loadBusiness();
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("businessUpdated", handleBusinessUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("businessUpdated", handleBusinessUpdate);
+    };
   }, []);
 
+  // Reset imgError cuando cambia el usuario o el logo
+  useEffect(() => {
+    setImgError(false);
+  }, [user?.photoUrl, user?.logoUrl, user?.businessImage, user?.logoUpdatedAt, cachedBusiness?.image, businessImage]);
+
+  // Prioridad: photoUrl > logoUrl > user.businessImage > cachedBusiness.image > business_image
   const rawLogo =
+    user?.photoUrl ||
     user?.logoUrl ||
+    user?.businessImage ||
     cachedBusiness?.image ||
+    businessImage ||
     null;
 
   const avatarSrc = rawLogo
     ? `${rawLogo}${user?.logoUpdatedAt ? `?v=${user.logoUpdatedAt}` : ""}`
     : null;
 
-  // ✅ Handler de logout con protección contra múltiples clicks
   const handleLogout = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Evitar múltiples clicks
-    if (isLoggingOut) {
-      console.log("[Navbar] Logout ya en progreso, ignorando click");
-      return;
-    }
-    
+
+    if (isLoggingOut) return;
+
     setIsLoggingOut(true);
-    console.log("[Navbar] Iniciando logout...");
-    
+
     try {
       await logout();
-    } catch (err) {
-      console.error("[Navbar] Error en logout:", err);
-      // Forzar redirección si falla
+    } catch {
       window.location.href = "/#/login";
     }
-    // No reseteamos isLoggingOut porque la página va a cambiar de todos modos
   }, [logout, isLoggingOut]);
 
   return (
@@ -76,7 +109,7 @@ export const Navbar = ({ setOpen }) => {
 
       {/* Acciones */}
       <div className="flex items-center space-x-4">
-        {/* Avatar: logo si hay; si falla, iniciales; si no, ícono */}
+        {/* ✅ Avatar: photoUrl > logoUrl > cachedBusiness > iniciales */}
         {avatarSrc && !imgError ? (
           <button
             onClick={() => navigate("/dashboard/profile")}
@@ -95,11 +128,11 @@ export const Navbar = ({ setOpen }) => {
         ) : (
           <button
             onClick={() => navigate("/dashboard/profile")}
-            className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center hover:ring-2 hover:ring-white/50 transition"
+            className="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center hover:ring-2 hover:ring-white/50 transition"
             title="Mi perfil"
           >
             {initials ? (
-              <span className="text-xs font-semibold text-[#242222]">{initials}</span>
+              <span className="text-xs font-semibold text-white">{initials}</span>
             ) : (
               <UserIcon className="w-4 h-4 text-white" />
             )}

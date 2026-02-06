@@ -50,7 +50,6 @@ export const ChatBot = ({ userName = 'Usuario' }) => {
   useEffect(() => {
     const key = getChatbotKey();
     if (!key) {
-      console.warn('[ChatBot] ⚠️ No se encontró VITE_CHATBOT_API_KEY en las variables de entorno');
       setConfigError('chatbot_key_missing');
     }
   }, []);
@@ -66,10 +65,10 @@ export const ChatBot = ({ userName = 'Usuario' }) => {
       if (authUserStr) {
         userData = JSON.parse(authUserStr);
       }
-    } catch (e) {
-      console.error('[ChatBot] Error parsing auth:user:', e);
+    } catch {
+      // Error parsing auth:user
     }
-    
+
     // Fallback a 'user' si auth:user no existe
     if (!userData) {
       try {
@@ -77,8 +76,8 @@ export const ChatBot = ({ userName = 'Usuario' }) => {
         if (userStr) {
           userData = JSON.parse(userStr);
         }
-      } catch (e) {
-        console.error('[ChatBot] Error parsing user:', e);
+      } catch {
+        // Error parsing user
       }
     }
 
@@ -123,8 +122,6 @@ export const ChatBot = ({ userName = 'Usuario' }) => {
     if (!storedBusinessId && userData?.businessId) {
       storedBusinessId = userData.businessId;
     }
-    
-    console.log('[ChatBot] IDs encontrados:', { userId: storedUserId, businessId: storedBusinessId });
     
     if (storedUserId) setUserId(storedUserId);
     if (storedBusinessId) setBusinessId(storedBusinessId);

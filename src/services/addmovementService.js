@@ -2,6 +2,38 @@
 import { axiosApi } from "@services/axiosclient";
 
 /**
+ * Valida si un string es un ObjectId de MongoDB válido
+ * @param {string} id - ID a validar
+ * @returns {boolean} true si es válido
+ */
+const isValidObjectId = (id) => {
+  if (!id || typeof id !== 'string') return false;
+  // MongoDB ObjectId: 24 caracteres hexadecimales
+  return /^[a-fA-F0-9]{24}$/.test(id);
+};
+
+/**
+ * Limpia y valida un ID de localStorage
+ * @param {string} key - Clave de localStorage
+ * @returns {string|null} ID válido o null
+ */
+const getValidIdFromStorage = (key) => {
+  let value = localStorage.getItem(key);
+
+  // Limpiar strings inválidos
+  if (!value || value === "undefined" || value === "null" || value === "[object Object]") {
+    return null;
+  }
+
+  // Verificar que sea un ObjectId válido
+  if (!isValidObjectId(value)) {
+    return null;
+  }
+
+  return value;
+};
+
+/**
  * Crear un movimiento
  * @param {{type:'ingreso'|'egreso', frecuencyType:'nuevo'|'recurrente', value:string|number, description?:string, date:string}}
  * @returns {Promise<any>} payload del backend (normalmente { data: {...} })
@@ -26,7 +58,9 @@ export const getMovementsService = async (userId, type = "") => {
   const url = type && type !== "todos" ? `${baseUrl}?type=${type}` : baseUrl;
 
   const res = await axiosApi.get(url, { withCredentials: true });
-  return res.data?.data ?? [];
+  // Backend devuelve { data: { movements: [...], totalExpenses, totalIncomes } }
+  const responseData = res.data?.data ?? {};
+  return Array.isArray(responseData) ? responseData : (responseData?.movements || []);
 };
 
 /**
@@ -49,8 +83,8 @@ export const getLastMovements = async (days = 30) => {
     const expensesRaw = Array.isArray(payload.expenses)
       ? payload.expenses
       : Array.isArray(payload.expense)
-      ? payload.expense
-      : [];
+        ? payload.expense
+        : [];
 
     const normalize = (arr, type) =>
       arr.map((x) => ({
@@ -63,8 +97,7 @@ export const getLastMovements = async (days = 30) => {
 
     // Mezcla ingresos + egresos
     return [...normalize(incomes, "ingreso"), ...normalize(expensesRaw, "egreso")];
-  } catch (error) {
-    console.error("❌ Error al obtener últimos movimientos:", error);
+  } catch {
     return [];
   }
 };
@@ -95,11 +128,19 @@ export const deleteMovementService = async (id) =>
  */
 
 export const getMovementsForBusinessOwner = async (businessId, type = "", filterDate = "all") => {
-  if (!businessId) throw new Error("businessId requerido para obtener movimientos");
+  if (!businessId || businessId === "undefined" || businessId === "null") {
+    throw new Error("businessId requerido y válido para obtener movimientos");
+  }
+
+  // Validar formato de ObjectId
+  if (!isValidObjectId(businessId)) {
+    throw new Error("El ID del negocio no tiene un formato válido");
+  }
 
   const url = `/movements/business/${businessId}?type=${type}&filterDate=${filterDate}`;
   const res = await axiosApi.get(url, { withCredentials: true });
-  return res.data?.data ?? [];
+  const responseData = res.data?.data ?? {};
+  return Array.isArray(responseData) ? responseData : (responseData?.movements || []);
 };
 
 /**
@@ -110,11 +151,19 @@ export const getMovementsForBusinessOwner = async (businessId, type = "", filter
  * @returns {Promise<any>} Los movimientos del prestador
  */
 export const getMovementsForServiceProvider = async (userId, type = "", filterDate = "all") => {
-  if (!userId) throw new Error("userId requerido para obtener movimientos");
+  if (!userId || userId === "undefined" || userId === "null") {
+    throw new Error("userId requerido y válido para obtener movimientos");
+  }
+
+  // Validar formato de ObjectId
+  if (!isValidObjectId(userId)) {
+    throw new Error("El ID del usuario no tiene un formato válido");
+  }
 
   const url = `/movements/user/${userId}?type=${type}&filterDate=${filterDate}`;
   const res = await axiosApi.get(url, { withCredentials: true });
-  return res.data?.data ?? [];
+  const responseData = res.data?.data ?? {};
+  return Array.isArray(responseData) ? responseData : (responseData?.movements || []);
 };
 
 /**
@@ -124,40 +173,35 @@ export const getMovementsForServiceProvider = async (userId, type = "", filterDa
  * @returns {Promise<any>} Resumen completo del día y mes
  */
 export const getDailySummaryService = async () => {
-  console.log('📊 Solicitando resumen diario al backend...');
-  
   try {
-    const userId = localStorage.getItem('user_id');
-    const businessId = localStorage.getItem('business_id');
-    const id = userId || businessId;
+    // Limpiar IDs invalidos primero
+    const rawUserId = localStorage.getItem('user_id');
+    const rawBusinessId = localStorage.getItem('business_id');
 
-    if (!id) {
-      throw new Error('No se encontró el ID del usuario o negocio');
+    if (rawUserId && !isValidObjectId(rawUserId)) {
+      localStorage.removeItem('user_id');
+    }
+    if (rawBusinessId && !isValidObjectId(rawBusinessId)) {
+      localStorage.removeItem('business_id');
     }
 
-    // La URL es fija, sin parámetros de fecha
-    const url = `/movements/summary/${id}`;
+    // Obtener el ID limpio
+    const id = getValidIdFromStorage('user_id');
 
-    console.log('🔗 URL:', url);
+    if (!id || !isValidObjectId(id)) {
+      return null;
+    }
 
-    const res = await axiosApi.get(url, {
+    const res = await axiosApi.get(`/movements/summary/${id}`, {
       withCredentials: true,
     });
 
-    console.log('✅ Respuesta completa del backend:', res.data);
-    
-    // Retornamos directamente res.data.data
     if (res.data && res.data.data) {
-      console.log('✅ Datos del resumen:', res.data.data);
       return res.data.data;
     }
-    
-    // Fallback por si la estructura es diferente
-    console.warn('⚠️ Estructura inesperada, retornando res.data');
+
     return res.data;
-    
-  } catch (error) {
-    console.error('❌ Error obteniendo resumen diario:', error);
-    throw error;
+  } catch {
+    throw new Error("Error obteniendo resumen diario");
   }
 };

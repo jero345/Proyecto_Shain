@@ -32,22 +32,11 @@ const normalizeBusinessData = (raw) => {
  * Obtiene información de un negocio por ID
  */
 export const getBusinessById = async (id) => {
-  try {
-    console.log('🔍 Buscando negocio con ID:', id);
-    const response = await axiosApi.get(`${BASE}/${id}`, { 
-      withCredentials: true 
-    });
-    console.log('📦 Respuesta cruda:', response);
-    const raw = pick(response);
-    console.log('📋 Datos extraídos:', raw);
-    const normalized = normalizeBusinessData(raw);
-    console.log('✅ Datos normalizados:', normalized);
-    return normalized;
-  } catch (error) {
-    console.error('❌ Error obteniendo negocio:', error);
-    console.error('❌ Respuesta error:', error.response?.data);
-    throw error;
-  }
+  const response = await axiosApi.get(`${BASE}/${id}`, {
+    withCredentials: true
+  });
+  const raw = pick(response);
+  return normalizeBusinessData(raw);
 };
 
 /**
@@ -56,16 +45,11 @@ export const getBusinessById = async (id) => {
  * (Alias para compatibilidad con Finance.jsx)
  */
 export const getBusinessByUser = async (userId) => {
-  try {
-    const response = await axiosApi.get(`${BASE}/${userId}`, { 
-      withCredentials: true 
-    });
-    const raw = pick(response);
-    return normalizeBusinessData(raw);
-  } catch (error) {
-    console.error('❌ Error obteniendo negocio por usuario:', error);
-    throw error;
-  }
+  const response = await axiosApi.get(`${BASE}/${userId}`, {
+    withCredentials: true
+  });
+  const raw = pick(response);
+  return normalizeBusinessData(raw);
 };
 
 /**
@@ -73,24 +57,19 @@ export const getBusinessByUser = async (userId) => {
  * Actualiza información del negocio con FormData
  */
 export const saveBusinessFD = async (id, payload) => {
-  try {
-    const formData = new FormData();
-    
-    if (payload.name) formData.append('name', toStr(payload.name));
-    if (payload.goal) formData.append('goal', toStr(payload.goal));
-    if (payload.type) formData.append('type', toStr(payload.type));
-    if (payload.description) formData.append('description', toStr(payload.description));
-    if (payload.imageFile) formData.append('image', payload.imageFile);
+  const formData = new FormData();
 
-    const response = await axiosApi.patch(`${BASE}/${id}`, formData, {
-      withCredentials: true,
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    
-    const raw = pick(response);
-    return normalizeBusinessData(raw);
-  } catch (error) {
-    console.error('❌ Error guardando negocio:', error);
-    throw error;
-  }
+  if (payload.name) formData.append('name', toStr(payload.name));
+  if (payload.goal) formData.append('goal', toStr(payload.goal));
+  if (payload.type) formData.append('type', toStr(payload.type));
+  if (payload.description) formData.append('description', toStr(payload.description));
+  if (payload.imageFile) formData.append('image', payload.imageFile);
+
+  const response = await axiosApi.patch(`${BASE}/${id}`, formData, {
+    withCredentials: true,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+
+  const raw = pick(response);
+  return normalizeBusinessData(raw);
 };

@@ -38,8 +38,8 @@ export const AdminReferralPanel = () => {
             typeof u.referralsCount === "number"
               ? u.referralsCount
               : code
-              ? (await getUsersByReferredCodeService(code, 1, 1000)).length || 0
-              : 0;
+                ? (await getUsersByReferredCodeService(code, 1, 1000)).length || 0
+                : 0;
 
           return { id, username, referralCode: code, referralsCount: count };
         })
@@ -49,7 +49,6 @@ export const AdminReferralPanel = () => {
       setDraftCodes(Object.fromEntries(enriched.map((r) => [r.id, r.referralCode ?? ""])));
       setTotalPages(tp || 1);
     } catch (e) {
-      console.error("❌ Error cargando datos:", e);
       setRows([]);
     } finally {
       setLoading(false);
@@ -85,7 +84,6 @@ export const AdminReferralPanel = () => {
         r.map((x) => (x.id === id ? { ...x, referralsCount: newCount } : x))
       );
     } catch (error) {
-      console.error("❌ Error actualizando código:", error);
       alert("No se pudo actualizar el código.");
       setRows(prevRows);
       setDraftCodes((d) => ({ ...d, [id]: row.referralCode || "" }));
@@ -112,7 +110,6 @@ export const AdminReferralPanel = () => {
         : [];
       setModal((m) => ({ ...m, list: list || [], loading: false }));
     } catch (err) {
-      console.error("❌ Error obteniendo referidos:", err);
       setModal((m) => ({ ...m, loading: false }));
     }
   };
@@ -202,11 +199,10 @@ export const AdminReferralPanel = () => {
                                   value={draft}
                                   onChange={(e) => handleDraftChange(row.id, e.target.value)}
                                   placeholder="Ej: VIP2025"
-                                  className={`w-full px-4 py-3 rounded-xl border ${
-                                    hasChanged
+                                  className={`w-full px-4 py-3 rounded-xl border ${hasChanged
                                       ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
                                       : "border-gray-300 dark:border-gray-600"
-                                  } focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all pr-12`}
+                                    } focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all pr-12`}
                                 />
                                 {hasChanged && (
                                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -218,11 +214,10 @@ export const AdminReferralPanel = () => {
                               <button
                                 onClick={() => handleSave(row)}
                                 disabled={!hasChanged || isSaving}
-                                className={`px-5 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
-                                  hasChanged
+                                className={`px-5 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${hasChanged
                                     ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
                                     : "bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
-                                } disabled:opacity-60`}
+                                  } disabled:opacity-60`}
                               >
                                 {isSaving ? (
                                   <>

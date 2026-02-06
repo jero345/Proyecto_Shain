@@ -12,13 +12,11 @@ export const getEmployees = async () => {
       response?.data?.employees || response?.data?.users || [];
 
     if (!Array.isArray(employees)) {
-      console.warn("⚠️ Respuesta inesperada:", response.data);
       return [];
     }
 
     return employees;
   } catch (error) {
-    console.error("❌ Error obteniendo empleados:", error);
     const message =
       error.response?.data?.message ||
       error.response?.data?.error ||

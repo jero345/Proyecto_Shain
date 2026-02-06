@@ -10,11 +10,19 @@ import { useAuth } from '@context/AuthContext';
 export const Settings = () => {
   const { user, updateUser } = useAuth() || { user: null, updateUser: () => {} };
   const userRole = user?.role || '';
-  const businessId = user?.business || user?.businessId || '';
 
-  console.log('👤 Usuario:', user);
-  console.log('🏢 Business ID:', businessId);
-  console.log('👔 Role:', userRole);
+  // Extraer businessId correctamente (puede ser string u objeto)
+  const getBusinessId = () => {
+    const business = user?.business;
+    if (typeof business === 'string') return business;
+    if (typeof business === 'object' && business) return business.id || business._id || '';
+    return user?.businessId || localStorage.getItem('business_id') || '';
+  };
+  const businessId = getBusinessId();
+
+  
+  
+  
 
   const [business, setBusiness] = useState({
     id: '',
@@ -68,11 +76,11 @@ export const Settings = () => {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        console.log('💾 Cache:', parsed);
+        
         setBusiness(parsed);
         setLogoPreview(parsed.image || '');
       } catch (err) {
-        console.error('Error cache:', err);
+        
       }
     }
   }, []);
@@ -80,7 +88,7 @@ export const Settings = () => {
   // Fetch business
   useEffect(() => {
     if (!businessId) {
-      console.error('❌ No hay businessId');
+      
       setLoading(false);
       setError('No se encontró el ID del negocio. Contacta a soporte.');
       return;
@@ -97,8 +105,8 @@ export const Settings = () => {
         
         if (ignore) return;
         
-        console.log('✅ Business:', data);
-        console.log('🔑 Code:', data.code);
+        
+        
         
         setBusiness(data);
         setLogoPreview(data.image || '');
@@ -109,9 +117,9 @@ export const Settings = () => {
         }
       } catch (err) {
         if (!ignore) {
-          console.error('❌ Error:', err);
-          console.error('❌ Status:', err.response?.status);
-          console.error('❌ Data:', err.response?.data);
+          
+          
+          
           
           let msg = 'No se pudo cargar el negocio.';
           if (err.response?.status === 404) msg = 'Negocio no encontrado.';
@@ -197,17 +205,20 @@ export const Settings = () => {
       });
       
       const merged = { ...snapshot, ...updated };
-      
+
       setBusiness(merged);
       setPendingLogo(null);
       localStorage.setItem('business', JSON.stringify(merged));
       setToast({ type: 'success', message: 'Guardado ✅' });
-      
+
+      // Notificar a otros componentes (Navbar) que el business se actualizó
+      window.dispatchEvent(new Event('businessUpdated'));
+
       if (merged?.image && merged.image !== user?.logoUrl) {
         updateUser?.({ logoUrl: merged.image, logoUpdatedAt: Date.now() });
       }
     } catch (err) {
-      console.error('❌ Error guardando:', err);
+      
       setBusiness(snapshot);
       setLogoPreview(snapshot.image || '');
       setToast({ type: 'error', message: 'Error al guardar.' });
@@ -321,7 +332,7 @@ export const Settings = () => {
               </button>
             </div>
             <p className="text-[10px] sm:text-xs text-purple-200/60 mt-2">
-              Comparte este código para que otros se unan
+              Comparte este código para que tus empleados se unan
             </p>
           </div>
         )}
@@ -375,7 +386,7 @@ export const Settings = () => {
                 <div>
                   <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
                     <Building2 className="w-3.5 h-3.5 text-purple-400" />
-                    Nombre del negocio <span className="text-red-400">*</span>
+                    Nombre del negocio <span className="text-red-400"></span>
                   </label>
                   <input
                     type="text"
@@ -401,7 +412,7 @@ export const Settings = () => {
                 <div>
                   <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
                     <FileText className="w-3.5 h-3.5 text-purple-400" />
-                    Tipo de negocio <span className="text-red-400">*</span>
+                    Tipo de negocio <span className="text-red-400"></span>
                   </label>
                   <input
                     type="text"
@@ -427,7 +438,7 @@ export const Settings = () => {
                 <div>
                   <label className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/90 mb-1.5">
                     <Target className="w-3.5 h-3.5 text-purple-400" />
-                    Meta mensual <span className="text-red-400">*</span>
+                    Meta mensual <span className="text-red-400"></span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 font-semibold">

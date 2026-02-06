@@ -47,11 +47,9 @@ function AdminPanel() {
         totalPagesData = response.totalPages || 1;
       }
       
-      console.log('[AdminPanel] Usuarios cargados:', usersData.length);
       setUsers(usersData);
       setTotalPages(totalPagesData);
-    } catch (err) {
-      console.error("[AdminPanel] Error al traer usuarios:", err);
+    } catch {
       alert("Error al cargar usuarios");
     } finally {
       setLoading(false);
@@ -83,8 +81,6 @@ function AdminPanel() {
     
     try {
       setUpdating(userId);
-      console.log(`[AdminPanel] Cambiando estado de ${userId}: ${currentStatus} -> ${newStatus}`);
-      
       await updateUserStatusService(userId, newStatus);
       
       // Actualizar el estado local
@@ -94,10 +90,7 @@ function AdminPanel() {
           return id === userId ? { ...u, status: newStatus } : u;
         })
       );
-      
-      console.log('[AdminPanel] ✅ Estado actualizado correctamente');
-    } catch (err) {
-      console.error("[AdminPanel] Error al actualizar estado:", err);
+    } catch {
       alert("Error al actualizar estado del usuario");
     } finally {
       setUpdating(null);
@@ -121,8 +114,6 @@ function AdminPanel() {
     
     try {
       setSaving(true);
-      console.log('[AdminPanel] Actualizando usuario:', userId, editForm);
-      
       await updateUserService(userId, editForm);
       
       // Actualizar el estado local
@@ -134,9 +125,7 @@ function AdminPanel() {
       );
       
       setIsModalOpen(false);
-      console.log('[AdminPanel] ✅ Usuario actualizado correctamente');
     } catch (err) {
-      console.error("[AdminPanel] Error actualizando usuario:", err);
       alert("Error al actualizar usuario: " + (err?.response?.data?.message || err.message || "Error desconocido"));
     } finally {
       setSaving(false);

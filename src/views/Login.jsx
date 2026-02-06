@@ -8,9 +8,9 @@ import logo from '@assets/logo.png';
 
 /** Permite activar cookie fallback NO httpOnly solo para pruebas si lo necesitas */
 function readEnv(key, fallback) {
-  try { if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key] !== undefined) return import.meta.env[key]; } catch {}
-  try { if (typeof window !== 'undefined' && window.__env && window.__env[key] !== undefined) return window.__env[key]; } catch {}
-  try { if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) return process.env[key]; } catch {}
+  try { if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key] !== undefined) return import.meta.env[key]; } catch { }
+  try { if (typeof window !== 'undefined' && window.__env && window.__env[key] !== undefined) return window.__env[key]; } catch { }
+  try { if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) return process.env[key]; } catch { }
   return fallback;
 }
 const ALLOW_FALLBACK_COOKIE = String(readEnv('VITE_ALLOW_FALLBACK_COOKIE', 'false')).toLowerCase() === 'true';
@@ -18,7 +18,7 @@ const ALLOW_FALLBACK_COOKIE = String(readEnv('VITE_ALLOW_FALLBACK_COOKIE', 'fals
 export const Login = () => {
   const navigate = useNavigate();
   const auth = useAuth();
-  const loginUser = auth?.loginUser || (() => {});
+  const loginUser = auth?.loginUser || (() => { });
   const user = auth?.user ?? null;
 
   const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -58,8 +58,7 @@ export const Login = () => {
         // SOLO pruebas en túneles: crea una cookie accesible al cliente
         try {
           document.cookie = `token_shain=fallback-${Date.now()}; path=/; SameSite=None; Secure`;
-          console.warn('[login] cookie fallback creada (SOLO PRUEBAS). No usar en producción.');
-        } catch {}
+        } catch { }
       }
 
       try { loginUser(userInfo, token ?? null); } catch (err) { /* noop */ }
@@ -72,11 +71,7 @@ export const Login = () => {
       if (role === ROLES.ADMIN) navigate('/portal-admin', { replace: true });
       else navigate('/dashboard/home', { replace: true });
 
-      // Debug útil: confirma que el token quedó en localStorage para el chatbot (opción B)
-      // console.log('[login] token_shain:', localStorage.getItem('token_shain'));
-
     } catch (err) {
-      console.error('Login error:', err);
       if (err?.response?.status === 403) {
         navigate('/trial-expired');
       } else {

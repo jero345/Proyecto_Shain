@@ -40,6 +40,13 @@ const sortDescByDate = (a, b) => {
   return String(secondaryKey(b)).localeCompare(String(secondaryKey(a)));
 };
 
+// Función para invalidar cache de finanzas
+const invalidateFinanceCache = () => {
+  localStorage.removeItem("financeSummary");
+  // Disparar evento para que Finance recargue
+  window.dispatchEvent(new Event("financeCacheInvalidated"));
+};
+
 export const History = () => {
   const { user } = useAuth();
   const userId = user?._id || user?.id;
@@ -47,6 +54,7 @@ export const History = () => {
   const [movements, setMovements] = useState([]);
   const [filterType, setFilterType] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -61,15 +69,17 @@ export const History = () => {
 
     const fetchMovements = async () => {
       try {
+        setLoading(true);
         const data = await getMovementsService(userId, filterType);
         const arr = Array.isArray(data) ? data : [];
         setMovements([...arr].sort(sortDescByDate));
-      } catch (err) {
-        console.error("Error fetching movements", err);
+      } catch {
         setToast({
           type: "error",
           message: "No se pudieron cargar los movimientos.",
         });
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -132,10 +142,12 @@ export const History = () => {
         return next.sort(sortDescByDate);
       });
 
+      // Invalidar cache de finanzas después de actualizar
+      invalidateFinanceCache();
+
       setEditModalOpen(false);
       setToast({ message: "Movimiento actualizado.", type: "success" });
     } catch (err) {
-      console.error("Error al actualizar", err);
       setToast({ message: "Error al actualizar.", type: "error" });
     }
   };
@@ -158,11 +170,15 @@ export const History = () => {
     try {
       await deleteMovementService(safeId);
       setToast({ type: "success", message: "Movimiento eliminado." });
+
+      // Invalidar cache de finanzas después de eliminar
+      invalidateFinanceCache();
     } catch (err) {
-      console.error("Error al eliminar", err);
       const status = err?.response?.status ?? err?.status;
       if (status === 404) {
         setToast({ type: "success", message: "Movimiento eliminado." });
+        // Invalidar cache incluso si el movimiento ya no existe en el servidor
+        invalidateFinanceCache();
       } else {
         setMovements(snapshot);
         setToast({
@@ -202,19 +218,18 @@ export const History = () => {
               <button
                 key={type}
                 onClick={() => setFilterType(type)}
-                className={`px-2 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
-                  type === "todos"
+                className={`px-2 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${type === "todos"
                     ? isActive
                       ? "bg-indigo-600 text-white border-2 border-indigo-400 shadow-lg shadow-indigo-500/30"
                       : "bg-slate-800/80 hover:bg-indigo-600/20 text-white/70 hover:text-indigo-300 border border-slate-600 hover:border-indigo-400/50"
                     : type === "ingreso"
-                    ? isActive
-                      ? "bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg shadow-emerald-500/30"
-                      : "bg-slate-800/80 hover:bg-emerald-600/20 text-white/70 hover:text-emerald-300 border border-slate-600 hover:border-emerald-400/50"
-                    : isActive
-                    ? "bg-rose-600 text-white border-2 border-rose-400 shadow-lg shadow-rose-500/30"
-                    : "bg-slate-800/80 hover:bg-rose-600/20 text-white/70 hover:text-rose-300 border border-slate-600 hover:border-rose-400/50"
-                }`}
+                      ? isActive
+                        ? "bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg shadow-emerald-500/30"
+                        : "bg-slate-800/80 hover:bg-emerald-600/20 text-white/70 hover:text-emerald-300 border border-slate-600 hover:border-emerald-400/50"
+                      : isActive
+                        ? "bg-rose-600 text-white border-2 border-rose-400 shadow-lg shadow-rose-500/30"
+                        : "bg-slate-800/80 hover:bg-rose-600/20 text-white/70 hover:text-rose-300 border border-slate-600 hover:border-rose-400/50"
+                  }`}
               >
                 {type === "todos" ? "Ver Todos" : type === "ingreso" ? "Ver Ingreso" : "Ver Egreso"}
               </button>
@@ -242,7 +257,14 @@ export const History = () => {
           Todos los movimientos
         </h3>
 
-        {visibleMovements.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12 sm:py-16">
+            <div className="text-center">
+              <div className="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+              <p className="text-white/60 text-sm">Cargando movimientos...</p>
+            </div>
+          </div>
+        ) : visibleMovements.length === 0 ? (
           <div className="text-center py-12 sm:py-16">
             <p className="text-base sm:text-lg text-white/60 font-medium">No se encontraron movimientos</p>
             <p className="text-sm text-white/40 mt-2">Intenta ajustar los filtros o agrega un nuevo movimiento</p>
@@ -263,11 +285,10 @@ export const History = () => {
                     <div className="flex items-center gap-3">
                       {/* Icono */}
                       <div
-                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-110 ${
-                          isIngreso 
-                            ? "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/20" 
+                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-110 ${isIngreso
+                            ? "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/20"
                             : "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/20"
-                        } shadow-lg`}
+                          } shadow-lg`}
                       >
                         {isIngreso ? (
                           <ArrowUpRight size={18} className="text-white" />
@@ -288,9 +309,8 @@ export const History = () => {
 
                       {/* Monto - alineado a la derecha */}
                       <div className="text-right flex-shrink-0">
-                        <p className={`text-base sm:text-lg font-bold ${
-                          isIngreso ? "text-emerald-400" : "text-red-400"
-                        }`}>
+                        <p className={`text-base sm:text-lg font-bold ${isIngreso ? "text-emerald-400" : "text-red-400"
+                          }`}>
                           {isIngreso ? "+" : "-"}${money(item?.value)}
                         </p>
                       </div>
@@ -424,9 +444,8 @@ export const History = () => {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-[9999] px-4 py-2 rounded-lg text-white shadow-lg ${
-            toast.type === "success" ? "bg-green-600" : "bg-red-600"
-          } animate-[fadeIn_150ms_ease-out,fadeOut_300ms_ease-in_2200ms_forwards]`}
+          className={`fixed bottom-6 right-6 z-[9999] px-4 py-2 rounded-lg text-white shadow-lg ${toast.type === "success" ? "bg-green-600" : "bg-red-600"
+            } animate-[fadeIn_150ms_ease-out,fadeOut_300ms_ease-in_2200ms_forwards]`}
         >
           {toast.message}
         </div>

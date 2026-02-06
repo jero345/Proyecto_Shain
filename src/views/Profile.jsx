@@ -25,7 +25,7 @@ export const Profile = () => {
       // Opción 1: Buscar en 'user_id' directamente
       const directUserId = localStorage.getItem('user_id');
       if (directUserId) {
-        console.log('userId encontrado en user_id:', directUserId);
+        
         return directUserId;
       }
 
@@ -34,7 +34,7 @@ export const Profile = () => {
       if (authUser) {
         const parsed = JSON.parse(authUser);
         if (parsed?.id || parsed?._id) {
-          console.log('userId encontrado en auth:user:', parsed?.id || parsed?._id);
+          
           return parsed?.id || parsed?._id;
         }
       }
@@ -44,7 +44,7 @@ export const Profile = () => {
       if (authUserAlt) {
         const parsed = JSON.parse(authUserAlt);
         if (parsed?.id || parsed?._id) {
-          console.log('userId encontrado en authuser:', parsed?.id || parsed?._id);
+          
           return parsed?.id || parsed?._id;
         }
       }
@@ -54,15 +54,15 @@ export const Profile = () => {
       if (userData) {
         const parsed = JSON.parse(userData);
         if (parsed?.id || parsed?._id) {
-          console.log('userId encontrado en user:', parsed?.id || parsed?._id);
+          
           return parsed?.id || parsed?._id;
         }
       }
 
-      console.error('No se encontró userId en ninguna ubicación del localStorage');
+      
       return null;
     } catch (error) {
-      console.error('Error obteniendo userId:', error);
+      
       return null;
     }
   };
@@ -85,7 +85,7 @@ export const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!userId) {
-        console.error('No se encontró userId');
+        
         setMessage({ text: 'No se pudo identificar al usuario. Por favor inicia sesión nuevamente.', type: 'error' });
         setInitialLoading(false);
         return;
@@ -93,9 +93,9 @@ export const Profile = () => {
 
       try {
         setInitialLoading(true);
-        console.log('Fetching profile for userId:', userId);
+        
         const data = await getUserByIdService(userId);
-        console.log('Profile data received:', data);
+        
         
         if (data && data.name) {
           setUser(data);
@@ -107,11 +107,11 @@ export const Profile = () => {
             goal: data.goal || '',
           });
         } else {
-          console.error('Datos de usuario vacíos o inválidos:', data);
+          
           setMessage({ text: 'No se encontraron datos del usuario', type: 'error' });
         }
       } catch (error) {
-        console.error('Error al cargar perfil:', error);
+        
         setMessage({ text: 'Error al cargar el perfil. Intenta de nuevo.', type: 'error' });
       } finally {
         setInitialLoading(false);
@@ -160,7 +160,7 @@ export const Profile = () => {
         setMessage({ text: '', type: '' });
       }, 3000);
     } catch (err) {
-      console.error('Error actualizando usuario', err);
+      
       setMessage({ 
         text: err?.message || 'Error al actualizar el perfil. Intenta de nuevo.', 
         type: 'error' 
@@ -239,7 +239,7 @@ export const Profile = () => {
                  field === 'username' ? 'Usuario' :
                  field === 'email' ? 'Correo electrónico' :
                  'Meta personal'}
-                {field !== 'goal' && <span className="text-red-400 ml-1">*</span>}
+                {field !== 'goal' && <span className="text-red-400 ml-1"></span>}
               </label>
               {isEditing ? (
                 field === 'goal' ? (

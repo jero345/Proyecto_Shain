@@ -5,6 +5,12 @@ import { Link } from "react-router-dom";
 import { addMovementService, getMovementsService } from "@services/addMovementService";
 import { useAuth } from "@context/AuthContext";
 
+// Invalidar cache de finanzas
+const invalidateFinanceCache = () => {
+  localStorage.removeItem("financeSummary");
+  window.dispatchEvent(new Event("financeCacheInvalidated"));
+};
+
 const getToday = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -36,6 +42,15 @@ export const AddMovement = () => {
   const [recentMovements, setRecentMovements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingRecent, setLoadingRecent] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // Auto-cerrar toast
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!userId) return;
@@ -45,7 +60,7 @@ export const AddMovement = () => {
         setLoadingRecent(true);
         const list = await getMovementsService(userId, "todos");
         
-        console.log("📦 Movimientos recibidos:", list);
+        
         
         const filtered = (Array.isArray(list) ? list : [])
           .map((m) => ({
@@ -58,10 +73,10 @@ export const AddMovement = () => {
           .filter((m) => ymd(m.date) === form.date)
           .slice(0, 6);
 
-        console.log("✅ Movimientos filtrados para", form.date, ":", filtered);
+        
         setRecentMovements(filtered);
       } catch (e) {
-        console.error("❌ Error trayendo movimientos:", e);
+        
         setRecentMovements([]);
       } finally {
         setLoadingRecent(false);
@@ -97,12 +112,12 @@ export const AddMovement = () => {
 
     const valueNumber = Number(form.value || 0);
     if (!valueNumber || valueNumber <= 0) {
-      alert("Ingresa un valor válido mayor que 0.");
+      setToast({ type: "error", message: "Ingresa un valor válido mayor que 0." });
       return;
     }
 
     if (form.type === "egreso" && !String(form.description || "").trim()) {
-      alert("La descripción es obligatoria para egresos.");
+      setToast({ type: "error", message: "La descripción es obligatoria para egresos." });
       return;
     }
 
@@ -115,12 +130,12 @@ export const AddMovement = () => {
         date: form.date,
       };
 
-      console.log("🚀 Enviando movimiento:", payload);
+      
 
       const response = await addMovementService(payload);
       const saved = response?.data || response;
 
-      console.log("✅ Respuesta del servidor:", saved);
+      
 
       const newMovement = {
         id: saved.id || saved._id || Date.now().toString(),
@@ -141,10 +156,12 @@ export const AddMovement = () => {
         date: form.date,
       });
 
-      alert("✅ Movimiento guardado correctamente");
-    } catch (err) {
-      console.error("❌ Error:", err);
-      alert("Error al guardar el movimiento");
+      // Invalidar cache de finanzas
+      invalidateFinanceCache();
+
+      setToast({ type: "success", message: "Movimiento guardado correctamente" });
+    } catch {
+      setToast({ type: "error", message: "Error al guardar el movimiento" });
     } finally {
       setLoading(false);
     }
@@ -369,6 +386,23 @@ export const AddMovement = () => {
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-xl text-white shadow-2xl font-medium text-sm border
+            ${toast.type === 'success'
+              ? 'bg-green-500/20 border-green-500/30 text-green-300'
+              : 'bg-red-500/20 border-red-500/30 text-red-300'}
+            animate-[fadeIn_150ms_ease-out]`}
+        >
+          {toast.type === 'success' ? '✅' : '⚠️'} {toast.message}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };

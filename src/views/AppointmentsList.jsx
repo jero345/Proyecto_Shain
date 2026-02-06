@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+// src/components/AppointmentsList.jsx
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { getAppointmentsWithFilterService, deleteAppointmentService } from "@services/appointmentsService";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, User, FileText, CheckCircle, Filter, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Calendar, Clock, User, FileText, CheckCircle, Filter, X } from "lucide-react";
 
 export const AppointmentsList = () => {
   // ============================================
@@ -12,14 +13,12 @@ export const AppointmentsList = () => {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("today"); // Cambiado a "today" por defecto
   const [confirmationMessage, setConfirmationMessage] = useState("");
-  const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   // ============================================
   // EFECTOS
   // ============================================
   useEffect(() => {
-    console.log('🔄 useEffect ejecutado - Filter:', filter);
     fetchAppointments();
   }, [filter]);
 
@@ -27,20 +26,14 @@ export const AppointmentsList = () => {
   // FUNCIONES DE DATOS
   // ============================================
   const fetchAppointments = async () => {
-    console.log('📞 Llamando a fetchAppointments con filtro:', filter);
     setLoading(true);
     setError("");
-    
+
     try {
       const data = await getAppointmentsWithFilterService(filter);
-      console.log('📦 Datos recibidos en componente:', data);
-      
       const validAppointments = Array.isArray(data) ? data.filter(appt => appt?.date) : [];
-      console.log('✅ Citas válidas (con fecha):', validAppointments);
-      
       setAppointments(validAppointments);
-    } catch (err) {
-      console.error("❌ Error cargando citas:", err);
+    } catch {
       setError("No se pudieron cargar las citas.");
     } finally {
       setLoading(false);
@@ -60,20 +53,11 @@ export const AppointmentsList = () => {
 
     try {
       await deleteAppointmentService(id);
-    } catch (error) {
-      console.error("❌ Error al completar la cita:", error);
+    } catch {
       await fetchAppointments();
       setConfirmationMessage("❌ No se pudo completar la cita.");
       setTimeout(() => setConfirmationMessage(""), 3000);
     }
-  };
-
-  // Toggle para expandir/colapsar descripción
-  const toggleDescription = (id) => {
-    setExpandedDescriptions(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
   };
 
   const openModal = (appt) => {
@@ -102,8 +86,7 @@ export const AppointmentsList = () => {
       
       const texto = fecha.toLocaleDateString("es-ES", opciones);
       return texto.charAt(0).toUpperCase() + texto.slice(1);
-    } catch (error) {
-      console.error('Error formateando fecha:', error);
+    } catch {
       return fechaStr;
     }
   };
@@ -161,12 +144,12 @@ export const AppointmentsList = () => {
   };
 
   // ============================================
-  // FUNCIONES DE FILTRADO
+  // FUNCIONES DE FILTRADO (MEMOIZADAS)
   // ============================================
-  const filterAppointments = (appts) => {
+  const filterAppointments = useCallback((appts) => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
+
     switch (filter) {
       case "today":
         return appts.filter((appt) => appt?.date === todayStr);
@@ -175,7 +158,7 @@ export const AppointmentsList = () => {
         return appts.filter((appt) => {
           const apptDate = appt?.date;
           if (!apptDate) return false;
-          
+
           const [year, month] = apptDate.split('-').map(Number);
           return year === today.getFullYear() && month === (today.getMonth() + 1);
         });
@@ -184,21 +167,22 @@ export const AppointmentsList = () => {
       default:
         return appts;
     }
-  };
+  }, [filter]);
 
-  const filteredAndSortedAppointments = filterAppointments(appointments)
-    .sort((a, b) => {
+  const filteredAndSortedAppointments = useMemo(() => {
+    return filterAppointments(appointments).sort((a, b) => {
       const dateA = a?.date || '';
       const dateB = b?.date || '';
-      
+
       if (dateA !== dateB) {
         return dateA.localeCompare(dateB);
       }
-      
+
       const hourA = a?.hour || '';
       const hourB = b?.hour || '';
       return hourA.localeCompare(hourB);
     });
+  }, [appointments, filterAppointments]);
 
   // ============================================
   // ESTADOS DE CARGA Y ERROR
@@ -274,8 +258,8 @@ export const AppointmentsList = () => {
               className="bg-transparent text-white text-sm font-medium focus:outline-none cursor-pointer pr-2"
             >
               <option value="today" className="bg-[#1e293b]">Hoy</option>
-              <option value="all" className="bg-[#1e293b]">Todas</option>
               <option value="currentMonth" className="bg-[#1e293b]">Este mes</option>
+              <option value="all" className="bg-[#1e293b]">Todas</option>
             </select>
           </div>
         </div>
@@ -323,8 +307,6 @@ export const AppointmentsList = () => {
                 const hora = formatHora(appt?.hour);
                 const id = appt._id || appt.id;
                 const description = appt?.description?.trim() || "Sin descripción";
-                const isExpanded = expandedDescriptions[id];
-                const isLongDescription = description.length > 30;
 
                 return (
                   <motion.div
@@ -375,55 +357,16 @@ export const AppointmentsList = () => {
                           </div>
                         </div>
 
-                        {/* Descripción - Expandible */}
-                        <div className="flex items-start gap-2 col-span-2 lg:col-span-1">
+                        {/* Descripción */}
+                        <div className="flex items-start gap-2 overflow-hidden">
                           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                             <FileText className="w-4 h-4 text-blue-400" />
                           </div>
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 overflow-hidden">
                             <p className="text-[10px] sm:text-xs text-white/50">Descripción</p>
-                            
-                            {/* Contenedor de descripción */}
-                            <div 
-                              onClick={() => isLongDescription && toggleDescription(id)}
-                              className={`${isLongDescription ? 'cursor-pointer' : ''}`}
-                            >
-                              <motion.div
-                                initial={false}
-                                animate={{ height: 'auto' }}
-                                className="overflow-hidden"
-                              >
-                                <p className={`text-xs sm:text-sm text-white/80 ${
-                                  !isExpanded && isLongDescription ? 'line-clamp-1' : ''
-                                }`}>
-                                  {description}
-                                </p>
-                              </motion.div>
-                              
-                              {/* Indicador de expandir */}
-                              {isLongDescription && (
-                                <button 
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleDescription(id);
-                                  }}
-                                  className="flex items-center gap-1 mt-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
-                                >
-                                  {isExpanded ? (
-                                    <>
-                                      <ChevronUp className="w-3 h-3" />
-                                      <span>Ver menos</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ChevronDown className="w-3 h-3" />
-                                      <span>Ver más</span>
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                            </div>
+                            <p className="text-xs sm:text-sm text-white/80 leading-relaxed truncate" title={description}>
+                              {description || "Sin descripción"}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -432,11 +375,11 @@ export const AppointmentsList = () => {
                       <div className="flex justify-end lg:justify-center lg:pt-1">
                         <button
                           onClick={() => openModal(appt)}
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg px-4 py-2 flex items-center gap-1.5 transition-all hover:scale-105 shadow-md text-sm mr-2"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40 text-white hover:bg-white/5 transition-all text-xs sm:text-sm mr-2"
                           title="Ver detalles"
                         >
                           <FileText className="w-4 h-4 text-white" />
-                          <span className="text-white font-semibold text-xs sm:text-sm">Ver</span>
+                          <span className="font-medium">Ver</span>
                         </button>
                         <button
                           onClick={() => handleDelete(id)}

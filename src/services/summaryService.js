@@ -7,17 +7,8 @@ import { axiosApi } from "@services/axiosclient";
  * @returns {Promise<any>} Resumen completo del día y mes
  */
 export const getDailySummaryService = async () => {
-  console.log('📊 Solicitando resumen diario al backend...');
-  
-  try {
-    const res = await axiosApi.get('/summary/daily', {
-      withCredentials: true,
-    });
-
-    console.log('✅ Resumen recibido del backend:', res.data);
-    return res.data;
-  } catch (error) {
-    console.error('❌ Error obteniendo resumen diario:', error);
-    throw error;
-  }
+  const res = await axiosApi.get('/summary/daily', {
+    withCredentials: true,
+  });
+  return res.data;
 };

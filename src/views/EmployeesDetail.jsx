@@ -22,16 +22,27 @@ export default function EmployeeDetail() {
     };
   };
 
+  // Helper para parsear fechas YYYY-MM-DD sin problemas de timezone
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return new Date(dateStr);
+  };
+
   // Filtrar movimientos del mes actual
   const filterMovementsByCurrentMonth = (movements) => {
     const { month, year } = getCurrentMonthYear();
-    
+
     return movements.filter((movement) => {
       const dateStr = movement.date || movement.createdAt || movement.fecha;
       if (!dateStr) return false;
-      
-      const movementDate = new Date(dateStr);
-      
+
+      const movementDate = parseLocalDate(dateStr);
+      if (!movementDate || isNaN(movementDate.getTime())) return false;
+
       return (
         movementDate.getMonth() === month &&
         movementDate.getFullYear() === year
@@ -49,21 +60,20 @@ export default function EmployeeDetail() {
         const data = await getEmployeeDetail(id);
 
         setEmployee(data.user);
-        
+
         // Filtrar solo movimientos del mes actual
         const currentMonthMovements = filterMovementsByCurrentMonth(data.movements || []);
-        
+
         // Ordenar movimientos del más reciente al más antiguo
         const sortedMovements = currentMonthMovements.sort((a, b) => {
           const dateA = new Date(a.date || a.createdAt || 0);
           const dateB = new Date(b.date || b.createdAt || 0);
           return dateB - dateA;
         });
-        
+
         setMovements(sortedMovements);
         setSummary(data.summary || {});
       } catch (err) {
-        console.error("❌ Error en EmployeeDetail:", err);
         setError(err.message || "No se pudo cargar la información del empleado.");
       } finally {
         setLoading(false);
@@ -93,13 +103,13 @@ export default function EmployeeDetail() {
               <User className="w-8 h-8 text-purple-400 animate-pulse" />
             </div>
           </div>
-          
+
           {/* Texto con gradiente */}
           <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
             Cargando Empleado
           </h2>
           <p className="text-white/60 text-sm">Obteniendo información del perfil...</p>
-          
+
           {/* Puntos animados */}
           <div className="flex justify-center gap-2 mt-4">
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -120,10 +130,10 @@ export default function EmployeeDetail() {
           <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
             <span className="text-4xl">⚠️</span>
           </div>
-          
+
           <h2 className="text-xl font-bold text-red-400 mb-2">Error al cargar</h2>
           <p className="text-white/60 text-sm mb-6 max-w-sm">{error}</p>
-          
+
           <button
             onClick={handleRetry}
             className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl"
@@ -163,7 +173,7 @@ export default function EmployeeDetail() {
     movements
       .filter((m) => m.type === "egreso")
       .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
-  
+
   const balance = totalIngresos - totalEgresos;
 
   // Formatear fecha
@@ -184,7 +194,7 @@ export default function EmployeeDetail() {
         onClick={() => navigate("/dashboard/employees")}
         className="flex items-center gap-2 text-purple-400 mb-6 hover:text-purple-300 transition group"
       >
-        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
         <span>Volver</span>
       </button>
 
@@ -201,7 +211,7 @@ export default function EmployeeDetail() {
         <h2 className="font-semibold text-base sm:text-lg mb-4 text-white flex items-center gap-2">
           Resumen del mes
         </h2>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {/* Ingresos */}
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 sm:p-4">
@@ -213,7 +223,7 @@ export default function EmployeeDetail() {
               ${totalIngresos.toLocaleString("es-CO")}
             </p>
           </div>
-          
+
           {/* Egresos */}
           <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-1">
@@ -224,7 +234,7 @@ export default function EmployeeDetail() {
               ${totalEgresos.toLocaleString("es-CO")}
             </p>
           </div>
-          
+
           {/* Balance */}
           <div className={`${balance >= 0 ? 'bg-blue-500/10 border-blue-500/20' : 'bg-orange-500/10 border-orange-500/20'} border rounded-xl p-3 sm:p-4`}>
             <div className="flex items-center gap-2 mb-1">
@@ -259,18 +269,17 @@ export default function EmployeeDetail() {
                   className="flex items-center gap-3 bg-slate-800/50 hover:bg-slate-700/50 border border-white/5 hover:border-white/10 rounded-xl p-3 transition-all"
                 >
                   {/* Icono */}
-                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    isIngreso 
-                      ? "bg-gradient-to-br from-emerald-500 to-emerald-600" 
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isIngreso
+                      ? "bg-gradient-to-br from-emerald-500 to-emerald-600"
                       : "bg-gradient-to-br from-rose-500 to-rose-600"
-                  }`}>
+                    }`}>
                     {isIngreso ? (
                       <ArrowUpRight size={16} className="text-white" />
                     ) : (
                       <ArrowDownRight size={16} className="text-white" />
                     )}
                   </div>
-                  
+
                   {/* Descripción y fecha */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">
@@ -280,12 +289,11 @@ export default function EmployeeDetail() {
                       {formatDate(m.date)}
                     </p>
                   </div>
-                  
+
                   {/* Monto */}
                   <div className="text-right flex-shrink-0">
-                    <p className={`text-sm sm:text-base font-bold ${
-                      isIngreso ? "text-emerald-400" : "text-rose-400"
-                    }`}>
+                    <p className={`text-sm sm:text-base font-bold ${isIngreso ? "text-emerald-400" : "text-rose-400"
+                      }`}>
                       {isIngreso ? "+" : "-"}${Number(m.value || 0).toLocaleString("es-CO")}
                     </p>
                   </div>

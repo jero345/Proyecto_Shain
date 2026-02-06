@@ -2,6 +2,16 @@
 
 import { axiosApi } from '@services/axiosclient';
 
+/**
+ * Validates if a string is a valid MongoDB ObjectId
+ * @param {string} id - ID to validate
+ * @returns {boolean} true if valid
+ */
+const isValidObjectId = (id) => {
+  if (!id || typeof id !== 'string') return false;
+  return /^[a-fA-F0-9]{24}$/.test(id);
+};
+
 // Obtener resumen financiero
 export const getFinanceSummary = async (date) => {
   try {
@@ -31,7 +41,6 @@ export const getFinanceSummary = async (date) => {
       goal: d.goal ?? 0,
     };
   } catch (error) {
-    console.error("❌ Error al obtener resumen financiero:", error);
     throw error.response?.data || error;
   }
 };
@@ -49,8 +58,7 @@ export const getLastMovements = async (days = 30) => {
       ...incomes.map((i) => ({ ...i, type: 'Ingreso' })),
       ...expense.map((e) => ({ ...e, type: 'Egreso' })),
     ];
-  } catch (error) {
-    console.error("❌ Error al obtener últimos movimientos:", error);
+  } catch {
     return [];
   }
 };
@@ -58,20 +66,22 @@ export const getLastMovements = async (days = 30) => {
 // Resumen de finanzas del negocio (para propietarios)
 export const getBusinessFinanceSummary = async (businessId, type) => {
   try {
+    if (!businessId || businessId === "undefined" || businessId === "null") {
+      return [];
+    }
+
+    if (!isValidObjectId(businessId)) {
+      return [];
+    }
+
     const { data } = await axiosApi.get(
       `/movements/business/${businessId}?type=${type}`,
-      {
-        withCredentials: true,
-      }
+      { withCredentials: true }
     );
 
-    console.log(`📦 Respuesta completa de ${type} del negocio:`, data);
-
-    // El backend devuelve el array en data.data
-    return data?.data || [];
-
-  } catch (error) {
-    console.error(`❌ Error al obtener ${type} del negocio:`, error);
+    const responseData = data?.data || {};
+    return Array.isArray(responseData) ? responseData : (responseData?.movements || []);
+  } catch {
     return [];
   }
 };
@@ -79,20 +89,22 @@ export const getBusinessFinanceSummary = async (businessId, type) => {
 // Resumen de finanzas del usuario (para prestadores de servicios)
 export const getUserFinanceSummary = async (userId) => {
   try {
+    if (!userId || userId === "undefined" || userId === "null") {
+      return [];
+    }
+
+    if (!isValidObjectId(userId)) {
+      return [];
+    }
+
     const { data } = await axiosApi.get(
       `/movements/user/${userId}`,
-      {
-        withCredentials: true,
-      }
+      { withCredentials: true }
     );
 
-    console.log(`📦 Respuesta completa de movimientos del usuario:`, data);
-
-    // El backend devuelve el array en data.data
-    return data?.data || [];
-
-  } catch (error) {
-    console.error(`❌ Error al obtener movimientos del usuario:`, error);
+    const responseData = data?.data || {};
+    return Array.isArray(responseData) ? responseData : (responseData?.movements || []);
+  } catch {
     return [];
   }
 };

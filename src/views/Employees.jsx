@@ -22,14 +22,14 @@ export default function Employees() {
   // Filtrar movimientos del mes actual
   const filterMovementsByCurrentMonth = (movements) => {
     const { month, year } = getCurrentMonthYear();
-    
+
     return movements.filter((movement) => {
       // El movimiento puede tener date, createdAt, o fecha
       const dateStr = movement.date || movement.createdAt || movement.fecha;
       if (!dateStr) return false;
-      
+
       const movementDate = new Date(dateStr);
-      
+
       return (
         movementDate.getMonth() === month &&
         movementDate.getFullYear() === year
@@ -55,35 +55,31 @@ export default function Employees() {
         const employeesWithMovements = await Promise.all(
           data.map(async (emp) => {
             try {
-              console.log(`🔍 Obteniendo movimientos para ${emp.name} (ID: ${emp._id || emp.id})`);
-              
               const movementsRes = await axiosApi.get(
                 `movements/user/${emp._id || emp.id}`,
                 { withCredentials: true }
               );
-              const allMovements = movementsRes?.data?.data || movementsRes?.data || [];
-              
+              // Backend devuelve { data: { movements: [...], totalExpenses, totalIncomes } }
+              const responseData = movementsRes?.data?.data || movementsRes?.data || {};
+              const allMovements = Array.isArray(responseData) ? responseData : (responseData?.movements || []);
+
               // Filtrar solo los movimientos del mes actual
               const currentMonthMovements = filterMovementsByCurrentMonth(allMovements);
-              
-              console.log(`📊 Movimientos totales de ${emp.name}:`, allMovements.length);
-              console.log(`📅 Movimientos del mes actual de ${emp.name}:`, currentMonthMovements.length);
-              
+
               return { ...emp, movements: currentMonthMovements };
             } catch (err) {
-              console.error(`❌ Error obteniendo movimientos para ${emp.name}:`, err);
-              return { 
-                ...emp, 
+              return {
+                ...emp,
                 movements: []
               };
             }
           })
         );
 
-        console.log("👥 Empleados con movimientos del mes cargados:", employeesWithMovements);
+
         setEmployees(employeesWithMovements);
       } catch (err) {
-        console.error("❌ Error cargando empleados:", err);
+
         setError(err.message || "Error al cargar los empleados.");
       } finally {
         setLoading(false);
@@ -167,11 +163,11 @@ export default function Employees() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {employees.map((emp, index) => {
               const movements = emp.movements || [];
-              
+
               const totalIngresos = movements
                 .filter((m) => m.type === "ingreso")
                 .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;
-                
+
               const totalEgresos = movements
                 .filter((m) => m.type === "egreso")
                 .reduce((sum, m) => sum + Number(m.value || 0), 0) || 0;

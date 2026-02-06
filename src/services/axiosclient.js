@@ -93,52 +93,33 @@ const isLoginPage = () => {
   return hash.includes("/login") || pathname.includes("/login");
 };
 
-// Endpoints de autenticación que NO deben triggear redirect
-const isAuthEndpoint = (url) => {
-  if (!url) return false;
-  const authPaths = ["/auth/login", "/auth/register", "/auth/logout", "/auth/forgot", "/auth/reset", "/auth/verify"];
-  return authPaths.some(path => url.includes(path));
-};
-
-// Verificar si estamos en una página de admin
-const isAdminPage = () => {
-  const hash = window.location.hash || "";
-  const pathname = window.location.pathname || "";
-  return hash.includes("/admin") || pathname.includes("/admin") || 
-         hash.includes("/portal-admin") || pathname.includes("/portal-admin");
-};
 
 /**
  * Maneja sesión expirada - SIMPLE Y DIRECTO
- * Limpia storage y redirige inmediatamente
+ * Limpia storage, notifica a React y redirige
  */
-const handleSessionExpired = (url) => {
-  // No hacer nada si ya estamos redirigiendo o en login
-  if (isRedirecting || isLoginPage()) {
-    console.log("[Axios] Ignorando 401 - ya redirigiendo o en login");
-    return;
-  }
-
-  // En páginas de admin, solo loguear el error pero NO redirigir
-  // Esto permite ver los errores de permisos reales
-  if (isAdminPage()) {
-    console.warn("[Axios] 401 en página admin - NO redirigiendo para debug");
-    console.warn("[Axios] URL que falló:", url);
-    return;
-  }
-
-  console.log("[Axios] ⚠️ SESIÓN EXPIRADA en:", url);
+const handleSessionExpired = () => {
+  if (isLoginPage() || isRedirecting) return;
   isRedirecting = true;
 
   // 1. Limpiar storage
   clearAllStorage();
 
   // 2. Limpiar headers de axios
-  delete axiosApi.defaults.headers.common["Authorization"];
-  delete axiosChatbot.defaults.headers.common["Authorization"];
+  try {
+    if (typeof axiosApi !== 'undefined') {
+      delete axiosApi.defaults.headers.common["Authorization"];
+    }
+    if (typeof axiosChatbot !== 'undefined') {
+      delete axiosChatbot.defaults.headers.common["Authorization"];
+    }
+  } catch {}
 
-  // 3. Redirigir AL INSTANTE
-  window.location.href = "/#/login";
+  // 3. Notificar a React (AuthContext escucha este evento)
+  window.dispatchEvent(new Event("sessionExpired"));
+
+  // 4. Redirigir al login
+  window.location.replace("/#/login");
 };
 
 /* ------------- axios factory ------------- */
@@ -173,9 +154,13 @@ function createClient(baseURL, options = {}) {
       const status = error.response?.status;
       const url = error.config?.url || "";
 
-      // Si es 401 y NO es un endpoint de auth → sesión expirada
-      if (status === 401 && !isAuthEndpoint(url)) {
-        handleSessionExpired(url);
+      // Cualquier 401 significa sesión expirada - cerrar sesión
+      // Excepto en login y register donde 401 es credenciales incorrectas
+      if (status === 401) {
+        const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+        if (!isAuthEndpoint) {
+          handleSessionExpired();
+        }
       }
 
       return Promise.reject(error);
@@ -226,8 +211,3 @@ export const resetRedirectFlag = () => {
   isRedirecting = false;
 };
 
-/* ------------- debug ------------- */
-if (import.meta?.env?.DEV) {
-  console.log("[AxiosClient] API_BASE:", API_BASE);
-  console.log("[AxiosClient] CHATBOT_BASE:", CHATBOT_BASE);
-}

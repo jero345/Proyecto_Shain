@@ -2,10 +2,49 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { axiosApi, TOKEN_STORAGE_KEY, resetRedirectFlag } from "@services/axiosclient";
 import { normalizeRole } from "../constant/roles";
+import { getBusinessById } from "@services/businessService";
 
 export const AuthContext = createContext(null);
 
 const USER_KEY = "auth:user";
+
+/**
+ * Validates if a string is a valid MongoDB ObjectId
+ * @param {string} id - ID to validate
+ * @returns {boolean} true if valid
+ */
+const isValidObjectId = (id) => {
+  if (!id || typeof id !== 'string') return false;
+  return /^[a-fA-F0-9]{24}$/.test(id);
+};
+
+/**
+ * Safely saves an ID to localStorage only if it's a valid ObjectId
+ * @param {string} key - localStorage key
+ * @param {string} value - ID value to save
+ */
+const safeSetId = (key, value) => {
+  if (value && isValidObjectId(value)) {
+    localStorage.setItem(key, value);
+  }
+};
+
+/**
+ * Cleans up invalid IDs from localStorage on app start
+ * This runs once when the module loads
+ */
+const cleanupInvalidIds = () => {
+  const keysToCheck = ['user_id', 'business_id'];
+  keysToCheck.forEach(key => {
+    const value = localStorage.getItem(key);
+    if (value && (value === "undefined" || value === "null" || value === "[object Object]" || !isValidObjectId(value))) {
+      localStorage.removeItem(key);
+    }
+  });
+};
+
+// Run cleanup on module load
+cleanupInvalidIds();
 
 function normalizeUser(raw) {
   if (!raw || typeof raw !== "object") return null;
@@ -38,18 +77,41 @@ export default function AuthProvider({ children }) {
     // Solo mostrar loading si hay token pero no hay usuario guardado
     return hasToken() && !getStoredUser();
   });
-  
+
   const bootstrapDone = useRef(false);
 
   // Limpiar sesión local
   const clearSession = useCallback(() => {
-    console.log("[AUTH] Limpiando sesión...");
     setUser(null);
-    const keys = [USER_KEY, TOKEN_STORAGE_KEY, "user_id", "business_id", "business", "user", "token"];
+    const keys = [USER_KEY, TOKEN_STORAGE_KEY, "user_id", "business_id", "business", "business_image", "user", "token"];
     keys.forEach(k => {
-      try { localStorage.removeItem(k); } catch {}
+      try { localStorage.removeItem(k); } catch { }
     });
     delete axiosApi.defaults.headers.common["Authorization"];
+  }, []);
+
+  // Cargar datos completos del negocio (para todos los usuarios)
+  const loadBusinessData = useCallback(async (businessId) => {
+    if (!businessId) return;
+
+    // Asegurarse de que businessId sea un string válido (no un objeto)
+    let id = businessId;
+    if (typeof businessId === 'object') {
+      id = businessId.id || businessId._id || null;
+    }
+
+    if (!id || typeof id !== 'string' || !localStorage.getItem(TOKEN_STORAGE_KEY)) return;
+
+    try {
+      const businessData = await getBusinessById(id);
+      if (businessData) {
+        localStorage.setItem("business", JSON.stringify(businessData));
+        localStorage.setItem("business_id", businessData.id || id);
+        window.dispatchEvent(new Event("businessUpdated"));
+      }
+    } catch {
+      // Silently fail
+    }
   }, []);
 
   // Bootstrap - verificar token al iniciar
@@ -63,8 +125,6 @@ export default function AuthProvider({ children }) {
     bootstrapDone.current = true;
 
     const verifySession = async () => {
-      console.log("[AUTH] Verificando sesión con el servidor...");
-      
       try {
         const token = localStorage.getItem(TOKEN_STORAGE_KEY);
         if (token) {
@@ -77,34 +137,47 @@ export default function AuthProvider({ children }) {
           const normalized = normalizeUser(data);
           setUser(normalized);
           localStorage.setItem(USER_KEY, JSON.stringify(normalized));
-          
-          // Guardar IDs adicionales
+
           const userId = normalized?.id || normalized?._id || data?.id || data?._id;
-          if (userId) localStorage.setItem("user_id", userId);
-          
+          if (userId) safeSetId("user_id", userId);
+
+          // Guardar businessImage si viene en la respuesta
+          const businessImage = data?.businessImage || normalized?.businessImage;
+          if (businessImage) {
+            localStorage.setItem("business_image", businessImage);
+          }
+
           const business = normalized?.business || data?.business;
+          let businessId = null;
+
           if (business) {
             if (typeof business === "string") {
-              localStorage.setItem("business_id", business);
-              localStorage.setItem("business", business);
+              businessId = business;
             } else if (business.id || business._id) {
-              localStorage.setItem("business_id", business.id || business._id);
+              businessId = business.id || business._id;
               localStorage.setItem("business", JSON.stringify(business));
             }
           }
-          
-          if (normalized?.businessId || data?.businessId) {
-            localStorage.setItem("business_id", normalized?.businessId || data?.businessId);
+
+          if (!businessId) {
+            const altBizId = normalized?.businessId || data?.businessId;
+            if (typeof altBizId === 'string') {
+              businessId = altBizId;
+            } else if (altBizId && typeof altBizId === 'object') {
+              businessId = altBizId.id || altBizId._id || null;
+            }
           }
-          
-          console.log("[AUTH] ✅ Sesión válida");
+
+          if (businessId && typeof businessId === 'string') {
+            safeSetId("business_id", businessId);
+            if (isValidObjectId(businessId)) {
+              loadBusinessData(businessId);
+            }
+          }
         } else {
-          console.log("[AUTH] Respuesta inválida de /auth/me");
           clearSession();
         }
-      } catch (err) {
-        // Si es 401, axios ya manejará la redirección
-        console.log("[AUTH] Error verificando sesión:", err?.response?.status || err.message);
+      } catch {
         clearSession();
       } finally {
         setLoading(false);
@@ -112,17 +185,12 @@ export default function AuthProvider({ children }) {
     };
 
     verifySession();
-  }, [user, clearSession]);
+  }, [user, clearSession, loadBusinessData]);
 
   // Login
   const loginUser = useCallback((userData, token = null) => {
-    console.log("[AUTH] Login...");
-    
     const normalized = normalizeUser(userData);
-    if (!normalized) {
-      console.error("[AUTH] Error normalizando usuario");
-      return;
-    }
+    if (!normalized) return;
 
     // Reset del flag de redirección (por si había quedado activo)
     resetRedirectFlag();
@@ -136,33 +204,55 @@ export default function AuthProvider({ children }) {
     // Guardar usuario
     localStorage.setItem(USER_KEY, JSON.stringify(normalized));
 
-    // Guardar IDs adicionales
+    // Guardar IDs adicionales con validacion
     const userId = normalized?.id || normalized?._id || userData?.id || userData?._id;
     if (userId) {
-      localStorage.setItem("user_id", userId);
+      safeSetId("user_id", userId);
       localStorage.setItem("user", JSON.stringify(normalized));
     }
 
+    // Guardar businessImage si viene en la respuesta
+    const businessImage = userData?.businessImage || normalized?.businessImage;
+    if (businessImage) {
+      localStorage.setItem("business_image", businessImage);
+    }
+
+    // Obtener businessId de cualquier fuente
     const business = normalized?.business || userData?.business;
+    let businessId = null;
+
     if (business) {
       if (typeof business === "string") {
-        localStorage.setItem("business_id", business);
-        localStorage.setItem("business", business);
+        businessId = business;
       } else if (typeof business === "object") {
-        const bizId = business.id || business._id;
-        if (bizId) localStorage.setItem("business_id", bizId);
-        localStorage.setItem("business", JSON.stringify(business));
+        businessId = business.id || business._id;
+        // Si ya viene completo, guardarlo
+        if (business.image) {
+          localStorage.setItem("business", JSON.stringify(business));
+        }
       }
     }
 
-    if (normalized?.businessId || userData?.businessId) {
-      localStorage.setItem("business_id", normalized?.businessId || userData?.businessId);
+    if (!businessId) {
+      const altBizId = normalized?.businessId || userData?.businessId;
+      if (typeof altBizId === 'string') {
+        businessId = altBizId;
+      } else if (altBizId && typeof altBizId === 'object') {
+        businessId = altBizId.id || altBizId._id || null;
+      }
+    }
+
+    if (businessId && typeof businessId === 'string') {
+      safeSetId("business_id", businessId);
+      // Cargar datos completos del negocio para todos los miembros
+      if (isValidObjectId(businessId)) {
+        loadBusinessData(businessId);
+      }
     }
 
     setUser(normalized);
     setLoading(false);
-    console.log("[AUTH] ✅ Login completado");
-  }, []);
+  }, [loadBusinessData]);
 
   // Update user
   const updateUser = useCallback((partial) => {
@@ -171,7 +261,7 @@ export default function AuthProvider({ children }) {
       if (next) {
         localStorage.setItem(USER_KEY, JSON.stringify(next));
         const userId = next?.id || next?._id;
-        if (userId) localStorage.setItem("user_id", userId);
+        if (userId) safeSetId("user_id", userId);
       }
       return next;
     });
@@ -179,13 +269,12 @@ export default function AuthProvider({ children }) {
 
   // Logout
   const logout = useCallback(async () => {
-    console.log("[AUTH] Logout...");
     clearSession();
-    
+
     try {
-      await axiosApi.post("/auth/logout", null, { timeout: 3000 }).catch(() => {});
-    } catch {}
-    
+      await axiosApi.post("/auth/logout", {}, { timeout: 3000 }).catch(() => { });
+    } catch { }
+
     window.location.href = "/#/login";
   }, [clearSession]);
 
@@ -196,7 +285,7 @@ export default function AuthProvider({ children }) {
     return list.includes(user.role);
   }, [user?.role]);
 
-  // Sync entre pestañas
+  // Sync entre pestañas (solo cuando se elimina token desde otra pestaña)
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === TOKEN_STORAGE_KEY && !e.newValue) {
@@ -211,12 +300,22 @@ export default function AuthProvider({ children }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const value = useMemo(() => ({ 
-    user, 
-    loading, 
-    loginUser, 
-    logout, 
-    updateUser, 
+  // Escuchar evento de sesión expirada (disparado por axiosclient en 401)
+  useEffect(() => {
+    const onSessionExpired = () => {
+      setUser(null);
+      setLoading(false);
+    };
+    window.addEventListener("sessionExpired", onSessionExpired);
+    return () => window.removeEventListener("sessionExpired", onSessionExpired);
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    loginUser,
+    logout,
+    updateUser,
     hasRole,
     isAuthenticated: !!user
   }), [user, loading, loginUser, logout, updateUser, hasRole]);

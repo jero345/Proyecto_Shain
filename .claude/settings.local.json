@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"\\(Get-Content ''src/views/Profile.jsx''\\) -replace ''console\\\\.\\(log|warn|error\\)\\\\\\([^\\)]*\\\\\\);?'', '''' | Set-Content ''src/views/Profile.jsx''\")"
+    ]
+  }
+}

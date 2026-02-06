@@ -26,12 +26,10 @@ export const CreateTimeslots = () => {
       setMsg("");
       
       const data = await getTimeslotsService();
-      
-      console.log('[CreateTimeslots] Data recibida:', data);
-      
+
       // El servicio ya normaliza la respuesta, pero por si acaso
       let list = [];
-      
+
       if (Array.isArray(data)) {
         list = data;
       } else if (data?.data && Array.isArray(data.data)) {
@@ -39,15 +37,12 @@ export const CreateTimeslots = () => {
       } else if (data?.timeslots && Array.isArray(data.timeslots)) {
         list = data.timeslots;
       } else {
-        console.warn('[CreateTimeslots] Estructura de datos inesperada:', data);
         list = [];
       }
-      
-      console.log('[CreateTimeslots] Lista procesada:', list);
+
       setTimeslots(list);
       
     } catch (err) {
-      console.error("[CreateTimeslots] Error cargando horarios:", err);
       const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Error desconocido";
       setMsg(`❌ Error al cargar horarios: ${errorMsg}`);
       setTimeslots([]);
@@ -112,15 +107,12 @@ export const CreateTimeslots = () => {
 
     try {
       setLoading(true);
-      console.log('[CreateTimeslots] Creando horario:', parsedHour);
-      
       await createTimeslotsService({ hour: parsedHour });
       
       setMsg("✅ Horario creado correctamente.");
       setHour("");
       await fetchTimeslots();
     } catch (err) {
-      console.error('[CreateTimeslots] Error creando:', err);
       const m = err?.response?.data?.message || err?.response?.data?.error || "No se pudo crear el horario.";
       setMsg(`❌ ${m}`);
     } finally {
